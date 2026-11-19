@@ -1,0 +1,508 @@
+
+\documentclass[a4paper, 11pt, oneside]{book}
+
+\usepackage{fontspec}
+\usepackage[italian]{babel}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{XCharter}
+\usepackage[xcharter]{newtxmath}
+\defaultfontfeatures{}
+\setmonofont{JetBrainsMono Nerd Font}[
+    Scale=MatchLowercase,
+    Contextuals=NoAlternate % niente legature: -> resta -> come nel codice
+]
+
+\usepackage[a4paper, margin=2cm, headsep=10pt]{geometry}
+\setlength{\headheight}{14pt}
+\setlength{\emergencystretch}{1.5em}
+\setcounter{tocdepth}{2}
+
+\usepackage{fancyhdr}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage[most]{tcolorbox}
+\tcbuselibrary{skins, breakable, listings, theorems}
+\usepackage{tikz}
+\usetikzlibrary{fit, backgrounds, arrows.meta}
+\usepackage{fontawesome5}
+\input{immagini/ciclo-vita.tex} % definisce \ciclovita
+\usepackage[hidelinks]{hyperref} % caricato per ultimo
+
+\pagestyle{fancy}
+\fancyhf{}
+\makeatletter
+% numero del capitolo solo nel corpo principale, non nelle pagine degli indici
+\renewcommand{\chaptermark}[1]{\markboth{\if@mainmatter\thechapter\quad\fi#1}{}}
+\makeatother
+\fancyhead[L]{\small\color{gray}\textsc{\nouppercase{\leftmark}}}
+\fancyhead[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{{\color{gray!40}\hrule height\headrulewidth width\headwidth}}
+
+% codice
+\definecolor{codeborder}{HTML}{505050}
+\definecolor{codeback}{HTML}{F0F0F0}
+\definecolor{codetitle}{HTML}{333333}
+\definecolor{codekeyword}{HTML}{1F3FA8}
+\definecolor{codetype}{HTML}{0E7C86}
+\definecolor{codecomment}{HTML}{6A737D}
+\definecolor{codestring}{HTML}{A31515}
+% riquadri
+\definecolor{defframe}{HTML}{1F3FA8}   % definizioni: blu
+\definecolor{defback}{HTML}{EEF2FB}
+\definecolor{noteframe}{HTML}{B7791F}  % note: ambra
+\definecolor{noteback}{HTML}{FDF7E7}
+\definecolor{warnframe}{HTML}{B42318}  % attenzione: rosso
+\definecolor{warnback}{HTML}{FDEEEC}
+\definecolor{exframe}{HTML}{1E7B45}    % esempi: verde
+\definecolor{exback}{HTML}{ECF6EF}
+
+\tcbset{
+    riquadro/.style 2 args={
+        breakable,
+        enhanced,
+        sharp corners,
+        boxrule=0pt,
+        leftrule=3pt,
+        colframe=#1,
+        colback=#2,
+        fonttitle=\bfseries,
+        coltitle=#1,
+        attach title to upper={\ },
+        before skip=10pt,
+        after skip=10pt,
+        boxsep=4pt,
+        left=6pt,
+        right=4pt
+    }
+}
+
+\newtcbtheorem[number within=chapter]{definizione}{Definizione}{
+    breakable,
+    enhanced,
+    sharp corners,
+    boxrule=0.6pt,
+    colframe=defframe,
+    colback=defback,
+    colbacktitle=defframe,
+    coltitle=white,
+    fonttitle=\bfseries,
+    separator sign dash,
+    before skip=10pt,
+    after skip=10pt,
+    boxsep=4pt,
+    left=4pt,
+    right=4pt
+}{def}
+
+% \begin{nota} ... \end{nota}  oppure  \begin{nota}[Titolo] ... \end{nota}
+\newtcolorbox{nota}[1][Nota]{riquadro={noteframe}{noteback}, title={#1.}}
+\newtcolorbox{attenzione}[1][Attenzione]{riquadro={warnframe}{warnback}, title={#1.}}
+\newtcolorbox{esempio}[1][Esempio]{riquadro={exframe}{exback}, title={#1.}}
+
+\lstdefinelanguage{Solidity}{
+    morekeywords={pragma, solidity, contract, interface, library, abstract,
+        function, modifier, event, emit, error, struct, enum, mapping, returns,
+        return, public, private, internal, external, view, pure, payable,
+        constant, immutable, memory, storage, calldata, if, else, for, while,
+        do, break, continue, new, delete, import, is, using, override, virtual,
+        constructor, receive, fallback, try, catch, unchecked, indexed,
+        anonymous, require, revert, assert, true, false},
+    morekeywords=[2]{address, bool, string, bytes, bytes4, bytes32, uint,
+        uint8, uint16, uint32, uint64, uint128, uint256, int, int8, int256},
+    sensitive=true,
+    morecomment=[l]{//},
+    morecomment=[s]{/*}{*/},
+    morestring=[b]",
+    morestring=[b]'
+}
+
+\DeclareTCBListing{codice}{ O{Codice} O{C} }{
+    breakable,
+    enhanced,
+    sharp corners,
+    boxrule=0.6pt,
+    colframe=codeborder,
+    colback=codeback,
+    title={#1},
+    fonttitle=\bfseries,
+    coltitle=codetitle,
+    attach title to upper={\par\smallskip},
+    before skip=10pt,
+    after skip=10pt,
+    boxsep=4pt,
+    left=4pt,
+    right=4pt,
+    listing only,
+    listing options={
+        language=#2,
+        basicstyle=\ttfamily\footnotesize,
+        keywordstyle=\color{codekeyword}\bfseries,
+        keywordstyle={[2]\color{codetype}},
+        commentstyle=\color{codecomment}\itshape,
+        stringstyle=\color{codestring},
+        showstringspaces=false,
+        breaklines=true,
+        tabsize=4,
+        columns=fullflexible,
+        keepspaces=true
+    }
+}
+
+\newtcblisting{terminale}[1][Terminale]{
+    breakable,
+    enhanced,
+    sharp corners,
+    boxrule=0.6pt,
+    colframe=codeborder,
+    colback=white,
+    title={#1},
+    fonttitle=\bfseries,
+    coltitle=codetitle,
+    attach title to upper={\par\smallskip},
+    before skip=10pt,
+    after skip=10pt,
+    boxsep=4pt,
+    left=4pt,
+    right=4pt,
+    listing only,
+    listing options={
+        basicstyle=\ttfamily\footnotesize,
+        breaklines=true,
+        columns=fullflexible,
+        keepspaces=true
+    }
+}
+
+\newcommand{\cod}[1]{\texttt{#1}} % codice nel testo
+
+\title{Introduzione alla programmazione di smart contract per Ethereum}
+\author{Michele Castenedoli - VR519112}
+\date{19 Novembre 2026}
+
+\begin{document}
+	\frontmatter
+	\maketitle
+	\tableofcontents
+
+	\mainmatter
+	\chapter{Lezione 01}
+	\section{Cos'è una blockchain}
+	Supponiamo di voler creare un consorzio per scambiare beni e servizi. Per gestire
+	un'infrastruttura di questo tipo serve un \textbf{registro} (o libro contabile) in
+	cui vengono memorizzati tutti gli scambi effettuati tra i partecipanti.
+
+	Ogni voce del registro prende il nome di \textbf{transazione} e contiene le
+	informazioni sullo scambio:
+	\begin{itemize}
+		\item chi offre il bene o il servizio;
+		\item chi ne usufruisce;
+		\item quando è avvenuta la transazione;
+		\item il bene o il servizio fornito;
+		\item la quantità scambiata.
+	\end{itemize}
+
+	Il primo problema deriva dalla natura del consorzio, che è un ambiente distribuito:
+	chi tiene il registro? La soluzione tradizionale consiste nell'eleggere un'entità
+	terza che mantiene il registro e di cui tutti si fidano. Questa soluzione, però,
+	funziona solo se il consorzio è ristretto e non ci sono problemi di fiducia tra i
+	membri; inoltre resta aperta la domanda su chi debba scegliere l'entità terza.
+
+	Una \textbf{blockchain} elimina il problema alla radice: ogni membro del consorzio
+	mantiene una copia del registro. Bisogna allora garantire che tutte le copie
+	coincidano, e per questo si usa un protocollo di consenso decentralizzato, cioè un
+	insieme di regole di natura informatica, giuridica ed economica. L'obiettivo è
+	prevedere penalità così elevate da rendere non conveniente mentire nella scrittura
+	del registro: tutti sono incentivati a comportarsi in modo onesto. Il meccanismo
+	prende forme diverse a seconda che si usi la \textit{Proof of Work} o la
+	\textit{Proof of Stake}.
+
+	La grande innovazione della blockchain è quindi la possibilità di lavorare in un
+	ambiente distribuito e decentralizzato, in cui sono regole informatiche ed
+	economiche a obbligare tutti i membri a comportarsi in modo lecito.
+
+	La blockchain è inoltre \textbf{immutabile}: le transazioni vengono registrate in
+	gruppi chiamati \textbf{blocchi} e, una volta scritto un blocco, il suo contenuto
+	non può più essere modificato.
+
+	\section{Bitcoin e Blockchain}
+	Prima di Bitcoin c'erano stati diversi tentativi, ma è con questa criptovaluta e
+	con l'avvento della blockchain che si è arrivati a definire un protocollo per
+	costruire una rete \textit{peer-to-peer}\footnote{Una rete in cui tutti i nodi sono
+	``alla pari''.} in grado di raggiungere il consenso su uno stato globale senza
+	l'intervento di un'entità centrale.
+
+	In particolare, la blockchain è stata usata inizialmente per risolvere il problema
+	del \textit{double spending} senza ricorrere a un'entità centrale. Un'autorità
+	centrale è anzi essa stessa un problema: richiede la fiducia di tutti i
+	partecipanti e rappresenta un possibile punto di partenza per attaccare l'intera
+	infrastruttura.
+
+	\begin{definizione}{Transazione}{transaction}
+		Una \textbf{transazione} è una struttura dati che descrive il trasferimento di
+		una certa quantità di token da uno o più indirizzi di partenza (\textit{input})
+		a uno o più indirizzi di destinazione (\textit{output}).
+	\end{definizione}
+
+	Proseguendo l'analogia con il registro, una pagina di transazioni prende il nome
+	di \textbf{blocco}. Ogni blocco è concatenato al precedente, quindi non è possibile
+	modificare un blocco senza modificare anche tutti quelli successivi.
+
+	\begin{definizione}{Bitcoin}{bitcoin}
+		Bitcoin è un automa per il consenso distribuito, in cui:
+		\begin{enumerate}
+			\item le transizioni da uno stato all'altro sono le transazioni
+				(definizione~\ref{def:transaction});
+			\item gli stati sono corrispondenze del tipo
+				\cod{indirizzo} $\rightarrow$ \cod{numero di token}.
+		\end{enumerate}
+	\end{definizione}
+
+	\section{Ciclo di vita di una transazione Bitcoin}
+	Una transazione Bitcoin attraversa quattro fasi:
+	\begin{enumerate}
+		\item \textbf{creazione e firma}: Alice crea la transazione con il proprio wallet
+			e la firma;
+		\item \textbf{broadcast e validazione}: la transazione viene inviata alla rete, i
+			cui nodi la controllano e la diffondono;
+		\item \textbf{mining}: la transazione viene inserita in un nuovo blocco;
+		\item \textbf{conferma}: il blocco entra a far parte della blockchain e la
+			transazione è confermata.
+	\end{enumerate}
+	Le sezioni seguenti descrivono le fasi una per una.
+
+	\section{Fase 1: creazione e firma della transazione}
+	\begin{figure}[H]
+		\centering
+		\ciclovita{1}{Tramite la firma si prova il possesso dei token e si autorizza a
+			spenderli}
+		\caption{Prima fase: creazione e firma della transazione.}
+		\label{fig:ciclo-vita-fase1}
+	\end{figure}
+
+	Nella prima fase Alice crea la transazione tramite il proprio \textit{wallet}
+	(definizione~\ref{def:wallet}) e la autorizza con la \textbf{firma}, che attesta che
+	è lei la proprietaria dei token.
+
+	\subsection{Wallet e chiavi}
+	\begin{definizione}{Wallet}{wallet}
+		Un \textbf{wallet} è un'applicazione software che fa da interfaccia principale tra
+		l'utente e una blockchain. Il suo compito è raccogliere i dati di una transazione,
+		codificarli nell'apposita struttura dati e firmare la transazione.
+	\end{definizione}
+
+	Le firme si basano su una coppia di chiavi, una pubblica e una privata. La chiave
+	privata, con cui si firma, deve restare segreta. Dalla chiave pubblica si ricava
+	l'\textbf{indirizzo}, che è ciò che si comunica agli altri per ricevere token. La
+	chiave pubblica diventa visibile solo quando si spendono i token: viene inserita
+	nella transazione per permettere ai nodi di verificare la firma.
+
+	Indirizzi e transazioni sono pubblici: tutte le transazioni sono registrate sulla
+	blockchain e chiunque può leggerle. A differenza di un'app di home banking, quindi,
+	un wallet non conserva i saldi ma le chiavi pubbliche e private; il saldo che mostra
+	viene calcolato leggendo la blockchain.
+
+	\subsection{Generazione delle chiavi}
+	Quando un wallet viene avviato per la prima volta:
+	\begin{enumerate}
+		\item genera, con un generatore di numeri casuali sicuro, una sequenza finita di
+			bit: è la \textbf{chiave privata}, che deve restare segreta;
+		\item dalla chiave privata calcola la chiave pubblica e da questa, con una funzione
+			di \textit{hash}, l'\textbf{indirizzo};
+		\item mostra l'indirizzo come stringa alfanumerica oppure come codice QR.
+	\end{enumerate}
+
+	\begin{nota}
+		Qui non basta un generatore pseudocasuale di libreria: serve vera entropia,
+		raccolta per esempio dallo stato del dispositivo, dai movimenti del cursore o dalle
+		variazioni di temperatura. I numeri devono essere davvero imprevedibili.
+	\end{nota}
+
+	L'indirizzo non è un'informazione sensibile: Alice può pubblicarlo, per esempio sulla
+	propria pagina web.
+
+	\begin{attenzione}
+		La chiave privata è un'informazione sensibile e Alice deve mantenerla segreta.
+		Il rischio dipende da dove il wallet la conserva; in ordine di rischio crescente:
+		\begin{itemize}
+			\item \textbf{wallet hardware}: nella propria memoria, da cui la chiave non esce
+				mai;
+			\item \textbf{wallet desktop}: nel computer;
+			\item \textbf{wallet mobile}: nel telefono;
+			\item \textbf{wallet web}: nel cloud oppure sul server di terze parti.
+		\end{itemize}
+	\end{attenzione}
+	A seconda del wallet utilizzato, quindi, cambia il livello di sicurezza.
+
+	\subsection{Wallet deterministici}
+	In base a come generano le chiavi, i wallet si dividono in due tipi:
+	\begin{itemize}
+		\item \textbf{non deterministici}: ogni chiave è indipendente dalle altre e viene
+			generata a partire da un numero casuale diverso per ogni chiave;
+		\item \textbf{deterministici}: tutte le chiavi derivano da un unico valore iniziale,
+			il \textbf{seed} (o \textit{master key}).
+			Conoscendo il seed originale si possono rigenerare tutte le chiavi. La forma
+			più evoluta è il \textbf{wallet deterministico gerarchico}, definito dallo
+			standard BIP-32.
+	\end{itemize}
+
+	Un wallet deterministico gerarchico, come MetaMask, contiene una serie di chiavi
+	derivate secondo una struttura ad albero (figura~\ref{fig:wallet-gerarchico}): dal
+	seed si ottiene la master key $k_m$, da questa le chiavi figlie ($k_m/0$, $k_m/1$,
+	\dots) e da ciascuna figlia le chiavi nipoti. Inoltre è possibile creare una
+	sequenza di chiavi pubbliche senza dare accesso alle chiavi private corrispondenti.
+
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=0.4\textwidth]{immagini/wallet-gerarchico.png}
+		\caption{Derivazione delle chiavi in un wallet deterministico gerarchico.}
+		\label{fig:wallet-gerarchico}
+	\end{figure}
+
+	\subsection{Codice mnemonico}
+	Il seed di un wallet deterministico si ricava da un \textbf{codice mnemonico}, cioè
+	una sequenza di 12 parole definita dallo standard BIP-39. Il codice si genera così
+	(figura~\ref{fig:parole-mnemoniche}):
+	\begin{enumerate}
+		\item si generano 128 bit di entropia con un generatore di numeri casuali sicuro;
+		\item si calcola lo SHA-256 dell'entropia e se ne prendono i primi 4 bit, che
+			fanno da \textit{checksum};
+		\item si accodano i 4 bit di checksum ai 128 bit di entropia, ottenendo 132 bit;
+		\item si dividono i 132 bit in 12 blocchi da 11 bit ciascuno;
+		\item ogni blocco è un numero da 0 a 2047 e indica una parola in una lista
+			standard di 2048 parole;
+		\item le 12 parole ottenute formano il codice mnemonico.
+	\end{enumerate}
+	Con 256 bit di entropia il procedimento è lo stesso: il checksum è di 8 bit e si
+	ottengono 24 parole.
+
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=0.45\textwidth]{immagini/parole-mnemoniche.png}
+		\caption{Generazione di un codice mnemonico di 12 parole (BIP-39).}
+		\label{fig:parole-mnemoniche}
+	\end{figure}
+
+	Le parole contengono la stessa informazione dell'entropia, ma in una forma che una
+	persona può trascrivere facilmente. Il checksum serve ad accorgersi degli errori di
+	trascrizione: una parola sbagliata o un ordine sbagliato rendono quasi sempre il
+	codice non valido.
+
+	Dal codice mnemonico si ricavano tutte le chiavi del wallet con algoritmi standard e
+	deterministici:
+	\begin{enumerate}
+		\item le parole, insieme a una password facoltativa, passano nella funzione
+			PBKDF2-HMAC-SHA512 con 2048 iterazioni, fissate dallo standard, che produce
+			un seed di 512 bit;
+		\item dal seed si ottiene la master key privata e da questa le chiavi private
+			figlie, nipoti e così via (BIP-32);
+		\item da ogni chiave privata si calcola la chiave pubblica e da questa
+			l'indirizzo.
+	\end{enumerate}
+	Le stesse parole, con la stessa password, producono sempre le stesse chiavi: per
+	recuperare il wallet, anche su un altro dispositivo, basta reinserirle.
+
+	\begin{attenzione}
+		Il codice mnemonico è il backup dell'intero wallet: chi conosce le parole
+		controlla tutti i fondi. Va conservato offline, per esempio scritto su carta.
+	\end{attenzione}
+
+	\subsection{Unspent Transaction Output (UTXO)}
+	\begin{definizione}{Unspent Transaction Output}{utxo}
+		In Bitcoin un \textbf{UTXO} (\textit{Unspent Transaction Output}) è un insieme di
+		token attualmente assegnati a un indirizzo e non ancora spesi.
+	\end{definizione}
+
+	Ogni transazione consuma alcuni UTXO e ne crea di nuovi:
+	\begin{itemize}
+		\item gli \textbf{input} di una transazione sono gli UTXO che la transazione
+			consuma;
+		\item gli \textbf{output} di una transazione sono gli UTXO che la transazione crea.
+	\end{itemize}
+	L'insieme degli UTXO è una parte fondamentale dello \textbf{stato globale} della
+	blockchain di Bitcoin: associa a ogni indirizzo i token che possiede
+	(definizione~\ref{def:bitcoin}). Il saldo di un indirizzo è quindi la somma degli
+	UTXO che gli sono assegnati.
+
+	Gli output di una transazione sono numerati a partire da 0. Un input indica l'UTXO
+	che spende tramite l'identificativo della transazione che lo ha creato, seguito
+	dal numero dell'output: per esempio \cod{7957a3...f6f18:0} è l'output numero 0 della
+	transazione \cod{7957a3...f6f18}. Il numero indica solo la posizione dell'output e
+	non dice quale output va al destinatario.
+
+	Un UTXO si spende sempre per intero. Se vale più della somma da trasferire, la
+	transazione contiene un output in più che riporta la differenza a un indirizzo del
+	mittente: è il \textbf{resto} (\textit{change}), che diventa a sua volta un nuovo
+	UTXO del mittente.
+
+	Poiché ogni input fa riferimento a un output di una transazione precedente, le
+	transazioni formano un \textbf{grafo aciclico}. Nella
+	figura~\ref{fig:grafo-transazioni} Joe trasferisce 0.1 BTC ad Alice; Alice spende
+	quell'UTXO per intero, inviando 0.015 BTC a Bob e riportando il resto a sé stessa;
+	Bob spende a sua volta l'UTXO ricevuto, inviando 0.01 BTC a Gopesh e tenendo il
+	resto. Gli output segnati come \textit{spent} sono già stati usati come input di
+	un'altra transazione, quelli \textit{unspent} sono gli UTXO ancora disponibili.
+
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=0.8\textwidth]{immagini/grafo-transazioni.png}
+		\caption{Grafo aciclico di transazioni.}
+		\label{fig:grafo-transazioni}
+	\end{figure}
+
+	L'esempio della figura~\ref{fig:grafo-transazioni} è una semplice catena, ma in
+	generale una transazione può avere più input, provenienti da transazioni diverse, e
+	più output, spesi da transazioni diverse: il grafo può quindi sia diramarsi sia
+	ricongiungersi (figura~\ref{fig:dag-transazioni}). È aciclico perché un input può
+	fare riferimento solo a un output già esistente. Nella figura le frecce continue
+	sono output già spesi, quelle tratteggiate gli UTXO ancora disponibili; i valori
+	sono in migliaia di satoshi (kS), dove 1 satoshi vale 0.00000001 BTC.
+
+	\begin{figure}[H]
+		\centering
+		\input{immagini/dag-transazioni.tex}
+		\caption{Grafo di transazioni con diramazioni e confluenze.}
+		\label{fig:dag-transazioni}
+	\end{figure}
+
+	\subsection{Come il wallet prepara la transazione}
+	Per inviare token, il wallet di Alice costruisce la transazione in questo modo:
+	\begin{enumerate}
+		\item seleziona, tra gli UTXO a disposizione di Alice, un insieme da usare come
+			\textbf{input}, in modo da avere un quantitativo sufficiente di token. Sono a
+			disposizione di Alice gli UTXO associati a un indirizzo di cui lei possiede la
+			chiave privata: il wallet ne mantiene una copia in cache e, se non ha
+			informazioni sufficienti, li chiede alla rete;
+		\item specifica come primo output l'indirizzo del destinatario e il quantitativo
+			di token da inviargli, $\text{amount} \ge 0$;
+		\item specifica come secondo output un indirizzo di Alice, che riceve il resto,
+			$\text{change} \ge 0$.
+	\end{enumerate}
+	La differenza tra gli input e gli output è la \textbf{fee}, pagata per far processare
+	la transazione e incassata dal miner che la inserisce in un blocco:
+	\[
+		\text{fee} = \sum \text{inputs} - \text{amount} - \text{change} \ge 0
+	\]
+	La fee non compare esplicitamente nella transazione. Per esempio, nella seconda
+	transazione della figura~\ref{fig:grafo-transazioni} l'input vale 0.1000 BTC,
+	l'amount 0.0150 BTC e il change 0.0845 BTC, quindi la fee è di 0.0005 BTC.
+
+	\section{Fase 2: broadcast e validazione della transazione}
+	\begin{figure}[H]
+		\centering
+		\ciclovita{2}{Ciascun nodo della rete riceve la nuova transazione, la controlla e
+			la passa ai vicini se è valida}
+		\caption{Seconda fase: broadcast e validazione della transazione.}
+		\label{fig:ciclo-vita-fase2}
+	\end{figure}
+
+	Una volta firmata, la transazione viene inviata (\textit{broadcast}) alla rete
+	\textit{peer-to-peer}. Ciascun nodo che la riceve la controlla, verificando per
+	esempio la firma e che gli UTXO in input non siano già stati spesi, e se è valida
+	la passa ai nodi vicini: in questo modo la transazione si propaga in tutta la rete.
+	%TEORICA%
+
+\end{document}

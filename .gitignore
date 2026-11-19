@@ -1,0 +1,10 @@
+*
+!*/
+lesson/
+sketch/
+!*.pdf
+!*.tex
+!.gitignore
+!implementations/**
+*.out
+notes/backup.tex
