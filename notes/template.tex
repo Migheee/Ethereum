@@ -26,7 +26,7 @@
 \usepackage[most]{tcolorbox}
 \tcbuselibrary{skins, breakable, listings, theorems}
 \usepackage{tikz}
-\usetikzlibrary{fit, backgrounds, arrows.meta}
+\usetikzlibrary{fit, backgrounds, arrows.meta, calc, shapes.geometric}
 \usepackage{fontawesome5}
 \input{immagini/ciclo-vita.tex} % definisce \ciclovita
 \usepackage[hidelinks]{hyperref} % caricato per ultimo
@@ -493,8 +493,8 @@
 	\section{Fase 2: broadcast e validazione della transazione}
 	\begin{figure}[H]
 		\centering
-		\ciclovita{2}{Ciascun nodo della rete riceve la nuova transazione, la controlla e
-			la passa ai vicini se è valida}
+		\ciclovita{2}{Ciascun nodo della rete riceve la nuova transazione, ne verifica
+			la validità e, se è valida, la passa ai vicini}
 		\caption{Seconda fase: broadcast e validazione della transazione.}
 		\label{fig:ciclo-vita-fase2}
 	\end{figure}
@@ -503,6 +503,96 @@
 	\textit{peer-to-peer}. Ciascun nodo che la riceve la controlla, verificando per
 	esempio la firma e che gli UTXO in input non siano già stati spesi, e se è valida
 	la passa ai nodi vicini: in questo modo la transazione si propaga in tutta la rete.
+
+	\section{Fase 3: mining o creazione dei blocchi}
+	\begin{figure}[H]
+		\centering
+		\ciclovita{3}{}
+		\caption{Terza fase: mining o creazione dei blocchi.}
+		\label{fig:ciclo-vita-fase3}
+	\end{figure}
+
+	I nodi che ricevono una transazione la conservano in un'area di memoria chiamata
+	\textbf{mempool}, dove resta in attesa (\textit{pendente}) finché un miner non la
+	inserisce in un blocco. La creazione di un nuovo blocco prende il nome di
+	\textbf{mining}.
+
+	Ciascun miner costruisce un blocco candidato che contiene:
+	\begin{itemize}
+		\item le transazioni che ha selezionato dalla mempool;
+		\item una transazione speciale, la \textbf{coinbase}, che non consuma nessun UTXO
+			e ha come output l'indirizzo del miner, con una quantità di token pari alla
+			ricompensa per il blocco (\textit{mining reward}) più le fee delle transazioni
+			incluse;
+		\item l'hash del blocco precedente, che lo collega alla catena;
+		\item un \textbf{nonce}, cioè un numero scelto in modo che l'hash del blocco inizi
+			con un certo numero prefissato di zeri. Non c'è modo di calcolarlo
+			direttamente: l'unico modo per trovarlo è provare valori diversi finché non se
+			ne trova uno valido. È questo il lavoro richiesto dalla \textit{Proof of Work}.
+			Più zeri sono richiesti, più tentativi servono in media per trovare un nonce
+			adatto: ogni bit a zero in più raddoppia il numero di tentativi necessari.
+	\end{itemize}
+	Se un miner trova un nonce valido prima di ricevere dalla rete un blocco trovato da
+	un altro, invia il proprio blocco ai nodi vicini; altrimenti abbandona il blocco a
+	cui stava lavorando e ricomincia sopra quello ricevuto.
+
+	In media viene trovato un nuovo blocco ogni 10 minuti. Per mantenere questo ritmo,
+	ogni 2016 blocchi (circa due settimane) la rete ricalcola la \textbf{difficoltà},
+	cioè il numero di zeri richiesto: se nel periodo precedente i blocchi sono stati
+	trovati più in fretta, perché è aumentata la potenza di calcolo complessiva della
+	rete, la difficoltà aumenta; se sono stati trovati più lentamente, diminuisce. La
+	difficoltà è la stessa per tutti i miner e non dipende dall'hardware del singolo.
+
+	\section{Fase 4: conferma della transazione}
+	\begin{figure}[H]
+		\centering
+		\ciclovita{4}{}
+		\caption{Quarta fase: conferma della transazione.}
+		\label{fig:ciclo-vita-fase4}
+	\end{figure}
+
+	Una volta trovato un blocco valido, il miner lo invia agli altri nodi: ciascuno lo
+	verifica e, se è valido, lo aggiunge alla propria copia della catena.
+
+	Una transazione non si considera confermata appena entra in un blocco, ma solo quando
+	sopra quel blocco ne sono stati aggiunti un certo numero di altri: ogni blocco
+	aggiunto è una \textbf{conferma} in più, e di solito se ne attendono 6, cioè circa
+	un'ora. Più blocchi ci sono sopra, più è difficile che il blocco venga scartato,
+	perché per modificarlo bisognerebbe rifare la Proof of Work di tutti i blocchi
+	successivi.
+
+	\subsection{Fork della blockchain}
+	Può capitare che due miner trovino un blocco valido quasi nello stesso momento: si
+	verifica allora un \textbf{fork}, cioè una biforcazione della catena. La
+	figura~\ref{fig:fork} mostra come evolve la rete; il colore di ogni nodo indica
+	l'ultimo blocco della catena che quel nodo considera valida.
+	\begin{enumerate}
+		\setcounter{enumi}{-1}
+		\item \textbf{stato iniziale}: tutti i nodi hanno una visione comune della catena;
+		\item \textbf{fork}: due nodi, X e Y, trovano ciascuno un nuovo blocco ed
+			espandono la blockchain in modo diverso;
+		\item \textbf{split della rete}: i due blocchi si propagano e la rete si divide;
+			una parte dei nodi segue la catena che termina con il blocco di X, l'altra
+			quella che termina con il blocco di Y;
+		\item \textbf{lo split si espande}: un miner che lavorava sopra il blocco di X
+			trova un nuovo blocco; la sua catena diventa la più lunga e i nodi che la
+			ricevono la adottano, anche quelli che prima seguivano Y;
+		\item \textbf{la rete riconverge}: tutti i nodi adottano la catena più lunga. Il
+			blocco di Y viene scartato insieme alla ricompensa del suo miner, e le sue
+			transazioni che non sono già nella catena vincente tornano nella mempool.
+	\end{enumerate}
+
+	\begin{figure}[H]
+		\centering
+		\input{immagini/fork.tex}
+		\caption{Evoluzione della rete durante un fork della blockchain.}
+		\label{fig:fork}
+	\end{figure}
+
+	Vince sempre la catena più lunga.
+    È per questo che una transazione si considera confermata solo dopo alcuni
+	blocchi: finché il suo blocco è in cima alla catena, potrebbe ancora finire su un
+	ramo scartato.
 	%TEORICA%
 
 \end{document}

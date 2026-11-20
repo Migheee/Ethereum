@@ -1,0 +1,80 @@
+% Fork della blockchain di Bitcoin: evoluzione della rete in cinque passi.
+% Il colore di ogni nodo indica l'ultimo blocco della catena che il nodo considera valida.
+% Incluso nel documento con \input{immagini/fork.tex}.
+\definecolor{forkS}{HTML}{E0E0E0}  % blocco iniziale (stella)
+\definecolor{forkX}{HTML}{5B9BD5}  % blocco trovato da X (triangolo)
+\definecolor{forkY}{HTML}{ED7D31}  % blocco trovato da Y (triangolo rovesciato)
+\definecolor{forkD}{HTML}{2E9E5B}  % nuovo blocco sopra quello di X (rombo)
+
+% posizione dei 12 nodi della rete, uguale in tutti i riquadri
+\newcommand{\forkcoordinate}{%
+    \coordinate (n1)  at (0.2, 3.0);
+    \coordinate (n2)  at (1.4, 3.5);
+    \coordinate (n3)  at (2.8, 3.4);
+    \coordinate (n4)  at (4.0, 2.9);
+    \coordinate (n5)  at (0.7, 2.0);
+    \coordinate (n6)  at (1.9, 2.3);
+    \coordinate (n7)  at (3.2, 2.0);
+    \coordinate (n8)  at (0.1, 0.9);
+    \coordinate (n9)  at (1.3, 1.0);
+    \coordinate (n10) at (2.6, 0.9);
+    \coordinate (n11) at (4.1, 1.3);
+    \coordinate (n12) at (1.9, 0.0);
+}
+
+% \forkrete{<spostamento>}{<colori dei 12 nodi>}{<didascalia del passo>}
+\newcommand{\forkrete}[3]{%
+    \begin{scope}[shift={#1}]
+        \forkcoordinate
+        \foreach \a/\b in {1/2, 2/3, 3/4, 1/5, 2/6, 3/7, 4/7, 4/11, 5/6, 6/7, 5/8, 5/9,
+                6/9, 6/10, 7/10, 7/11, 8/9, 9/10, 10/11, 9/12, 10/12}
+            \draw[line width=0.8pt] (n\a) -- (n\b);
+        \foreach \c [count=\i] in {#2}
+            \node[circle, draw, line width=0.6pt, minimum size=0.42cm, fill=\c] at (n\i) {};
+        \node[font=\scriptsize\bfseries, above left=4pt] at (n1) {X};
+        \node[font=\scriptsize\bfseries, below right=4pt] at (n11) {Y};
+        \node[anchor=north, align=center, font=\small] at (2.1, -0.45) {#3};
+    \end{scope}
+}
+
+\begin{tikzpicture}[
+    blocco/.style={draw, fill=white, minimum size=0.85cm, line width=0.8pt},
+    simbolo/.style={draw, line width=0.5pt, inner sep=0pt},
+    collegamento/.style={-{Latex[length=2mm]}, line width=0.8pt}
+]
+    \forkrete{(0, 0)}{forkS,forkS,forkS,forkS,forkS,forkS,forkS,forkS,forkS,forkS,forkS,forkS}
+        {0. Stato iniziale: tutti i nodi\\hanno la stessa catena}
+    \forkrete{(5.8, 0)}{forkX,forkS,forkS,forkS,forkS,forkS,forkS,forkS,forkS,forkS,forkY,forkS}
+        {1. Fork: X e Y trovano\\un blocco ciascuno}
+    \forkrete{(11.6, 0)}{forkX,forkX,forkY,forkY,forkX,forkX,forkY,forkX,forkX,forkY,forkY,forkY}
+        {2. Split della rete}
+    \forkrete{(0, -5.4)}{forkD,forkD,forkY,forkY,forkD,forkD,forkD,forkD,forkD,forkD,forkY,forkD}
+        {3. Sopra il blocco di X ne viene\\trovato un altro: lo split si espande}
+    \forkrete{(5.8, -5.4)}{forkD,forkD,forkD,forkD,forkD,forkD,forkD,forkD,forkD,forkD,forkD,forkD}
+        {4. La rete riconverge:\\vince la catena più lunga}
+
+    % legenda: i blocchi e la catena che ne risulta
+    \begin{scope}[shift={(11.6, -5.4)}]
+        \node[blocco] (bS) at (0.5, 1.7) {};
+        \node[simbolo, star, star points=5, star point ratio=2.3, minimum size=0.55cm,
+            fill=forkS] at (bS) {};
+        \node[blocco] (bX) at (1.9, 2.6) {};
+        \node[simbolo, regular polygon, regular polygon sides=3, minimum size=0.6cm,
+            fill=forkX] at (bX) {};
+        \node[blocco] (bD) at (3.3, 2.6) {};
+        \node[simbolo, diamond, minimum size=0.55cm, fill=forkD] at (bD) {};
+        \node[blocco, dashed] (bY) at (1.9, 0.8) {};
+        \node[simbolo, regular polygon, regular polygon sides=3, shape border rotate=180,
+            minimum size=0.6cm, fill=forkY] at (bY) {};
+        \draw[collegamento] (bS) -- (bX);
+        \draw[collegamento] (bX) -- (bD);
+        \draw[collegamento, dashed] (bS) -- (bY);
+        \node[font=\small, above=2pt] at ($(bX)!0.5!(bD) + (0, 0.4)$) {catena più lunga};
+        \node[font=\small, right=4pt] at (bY.east) {scartato};
+        \node[font=\scriptsize, below=1pt] at (bS.south) {iniziale};
+        \node[font=\scriptsize, below=1pt] at (bX.south) {di X};
+        \node[font=\scriptsize, below=1pt] at (bD.south) {nuovo};
+        \node[font=\scriptsize, below=1pt] at (bY.south) {di Y};
+        \node[anchor=north, align=center, font=\small] at (2.1, -0.45) {Blocchi e colori\\dei nodi};
+    \end{scope}
+\end{tikzpicture}

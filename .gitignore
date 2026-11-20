@@ -4,6 +4,7 @@ lesson/
 sketch/
 !*.pdf
 !*.tex
+!*.png
 !.gitignore
 !implementations/**
 *.out
