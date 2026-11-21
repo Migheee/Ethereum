@@ -1,0 +1,34 @@
+% Struttura di una transazione Ethereum e transizione di stato che provoca.
+% Incluso nel documento con \input{immagini/transazione.tex}.
+\definecolor{trdoc}{HTML}{F8D7E3}
+\definecolor{trstato}{HTML}{FFF2A8}
+\definecolor{trfreccia}{HTML}{B42318}
+\begin{tikzpicture}[
+    stato/.style={circle, draw, line width=1pt, fill=trstato, minimum size=2.3cm,
+        font=\bfseries},
+    campo/.style={draw, fill=white, minimum height=0.5cm, inner sep=1pt,
+        font=\small\ttfamily}
+]
+    % stati e transizione
+    \node[stato] (s1) at (0, 0) {stato $n$};
+    \node[stato] (s2) at (10, 0) {stato $n{+}1$};
+    \draw[-{Latex[length=3mm]}, line width=1pt, trfreccia] (s1) --
+        node[below=3pt, font=\bfseries, text=trfreccia] {transizione} (s2);
+
+    % transazione, disegnata come un documento
+    \draw[fill=trdoc, line width=0.8pt]
+        (3.1, 0.85) -- (3.1, 5.0) -- (6.9, 5.0) -- (6.9, 0.85)
+        .. controls (6.2, 0.35) and (5.6, 1.35) .. (5.0, 0.85)
+        .. controls (4.4, 0.35) and (3.8, 1.35) .. (3.1, 0.85) -- cycle;
+    \node[font=\bfseries] at (5.0, 4.6) {Transazione};
+    \node[campo, minimum width=1.6cm] at (4.1, 4.0)  {chainId};
+    \node[campo, minimum width=1.6cm] at (5.9, 4.0)  {nonce};
+    \node[campo, minimum width=1.6cm] at (4.1, 3.35) {gasPrice};
+    \node[campo, minimum width=1.6cm] at (5.9, 3.35) {gasLimit};
+    \node[campo, minimum width=1.6cm] at (4.1, 2.7)  {to};
+    \node[campo, minimum width=1.6cm] at (5.9, 2.7)  {value};
+    \node[campo, minimum width=3.4cm] at (5.0, 2.05) {data};
+    \node[campo, minimum width=1.05cm] at (3.95, 1.4) {v};
+    \node[campo, minimum width=1.05cm] at (5.0, 1.4)  {r};
+    \node[campo, minimum width=1.05cm] at (6.05, 1.4) {s};
+\end{tikzpicture}

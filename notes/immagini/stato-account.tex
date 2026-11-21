@@ -1,0 +1,55 @@
+% Stato globale di Ethereum: mappa indirizzo -> account, con il dettaglio di un account
+% esterno e di un account contratto (con il suo storage).
+% Incluso nel documento con \input{immagini/stato-account.tex}.
+\definecolor{saheader}{HTML}{DAE3F3}
+\definecolor{saesterno}{HTML}{E7E6E6}
+\definecolor{sacontratto}{HTML}{E2F0D9}
+\definecolor{sastorage}{HTML}{FFF2CC}
+\definecolor{saassente}{HTML}{8C8C8C}
+\begin{tikzpicture}[
+    cella/.style={draw, minimum height=0.6cm, inner sep=2pt, font=\small},
+    campo/.style={cella, minimum width=1.8cm, font=\small\bfseries},
+    valore/.style={cella, minimum width=3.6cm},
+    titolo/.style={font=\bfseries},
+    freccia/.style={-{Latex[length=2.5mm]}, line width=1pt}
+]
+    % --- stato globale ---
+    \node[titolo] at (2.7, 2.25) {Stato globale};
+    \node[cella, fill=saheader, minimum width=2.0cm, font=\small\bfseries] at (1.0, 1.6) {indirizzo};
+    \node[cella, fill=saheader, minimum width=3.4cm, font=\small\bfseries] at (3.7, 1.6) {account};
+    \node[cella, minimum width=2.0cm, font=\small\ttfamily] at (1.0, 1.0) {0xAlice...};
+    \node[cella, fill=saesterno, minimum width=3.4cm] (rigaA) at (3.7, 1.0) {account esterno};
+    \node[cella, minimum width=2.0cm, font=\small\ttfamily] at (1.0, 0.4) {0xBob...};
+    \node[cella, fill=saesterno, minimum width=3.4cm] at (3.7, 0.4) {account esterno};
+    \node[cella, minimum width=2.0cm, font=\small\ttfamily] at (1.0, -0.2) {0x7a25...};
+    \node[cella, fill=sacontratto, minimum width=3.4cm] (rigaC) at (3.7, -0.2) {account contratto};
+
+    % --- account esterno espanso ---
+    \node[titolo] at (9.7, 4.9) {Account esterno \texttt{0xAlice...}};
+    \node[campo, fill=saesterno] at (7.9, 4.3) {nonce};
+    \node[valore] at (10.6, 4.3) {5};
+    \node[campo, fill=saesterno] at (7.9, 3.7) {saldo};
+    \node[valore] at (10.6, 3.7) {2 ETH};
+    \node[campo, fill=saesterno, text=saassente] at (7.9, 3.1) {codice};
+    \node[valore, text=saassente] at (10.6, 3.1) {assente};
+    \node[campo, fill=saesterno, text=saassente] at (7.9, 2.5) {storage};
+    \node[valore, text=saassente] at (10.6, 2.5) {assente};
+
+    % --- account contratto espanso ---
+    \node[titolo] at (9.7, 1.75) {Account contratto \texttt{0x7a25...}};
+    \node[campo, fill=sacontratto] at (7.9, 1.1) {nonce};
+    \node[valore] at (10.6, 1.1) {1};
+    \node[campo, fill=sacontratto] at (7.9, 0.5) {saldo};
+    \node[valore] at (10.6, 0.5) {1 ETH};
+    \node[campo, fill=sacontratto] at (7.9, -0.1) {codice};
+    \node[valore, font=\small\ttfamily] at (10.6, -0.1) {bytecode};
+    \node[campo, fill=sacontratto, minimum height=1.2cm] at (7.9, -1.0) {storage};
+    \node[cella, fill=sastorage, minimum width=1.4cm, font=\small\ttfamily] at (9.5, -0.7) {x};
+    \node[cella, fill=sastorage, minimum width=2.2cm, font=\small\ttfamily] at (11.3, -0.7) {42};
+    \node[cella, fill=sastorage, minimum width=1.4cm, font=\small\ttfamily] at (9.5, -1.3) {owner};
+    \node[cella, fill=sastorage, minimum width=2.2cm, font=\small\ttfamily] at (11.3, -1.3) {0xAlice...};
+    \node[font=\small] at (10.4, -1.95) {storage: chiave $\rightarrow$ valore};
+
+    \draw[freccia] (rigaA.east) -- (7.0, 3.4);
+    \draw[freccia] (rigaC.east) -- (7.0, -0.4);
+\end{tikzpicture}

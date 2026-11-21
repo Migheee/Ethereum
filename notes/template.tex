@@ -504,7 +504,7 @@
 	esempio la firma e che gli UTXO in input non siano già stati spesi, e se è valida
 	la passa ai nodi vicini: in questo modo la transazione si propaga in tutta la rete.
 
-	\section{Fase 3: mining o creazione dei blocchi}
+	\section{Fase 3: mining o creazione dei blocchi}\label{sec:fase3-mining}
 	\begin{figure}[H]
 		\centering
 		\ciclovita{3}{}
@@ -561,7 +561,7 @@
 	perché per modificarlo bisognerebbe rifare la Proof of Work di tutti i blocchi
 	successivi.
 
-	\subsection{Fork della blockchain}
+	\subsection{Fork della blockchain}\label{sec:fork}
 	Può capitare che due miner trovino un blocco valido quasi nello stesso momento: si
 	verifica allora un \textbf{fork}, cioè una biforcazione della catena. La
 	figura~\ref{fig:fork} mostra come evolve la rete; il colore di ogni nodo indica
@@ -593,6 +593,476 @@
     È per questo che una transazione si considera confermata solo dopo alcuni
 	blocchi: finché il suo blocco è in cima alla catena, potrebbe ancora finire su un
 	ramo scartato.
+
+	\section{Ethereum}
+	\begin{definizione}{Ethereum}{eth}
+		Ethereum è una macchina a stati (``infiniti'') deterministica: ogni transazione
+		$t$ produce un cambiamento da uno stato $s$ a uno stato successivo $s'$.
+	\end{definizione}
+
+	Come in Bitcoin, la blockchain è un registro distribuito che memorizza transazioni
+	raggruppate in blocchi; cambia però ciò che una transazione modifica. In Bitcoin una
+	transazione modifica l'insieme degli UTXO (definizione~\ref{def:utxo}), cioè lo
+	stato globale che descrive chi possiede quali token. In Ethereum invece modifica una
+	memoria \textit{general purpose}: una mappa che può contenere qualsiasi coppia
+	(\textit{chiave}, \textit{valore}) e che conserva sia il codice degli smart contract
+	sia i loro dati.
+
+	\begin{attenzione}
+		I cambiamenti apportati alla memoria devono essere \textbf{deterministici}: ogni
+		nodo, eseguendo le stesse transazioni a partire dallo stesso stato, deve arrivare
+		esattamente allo stesso risultato. Altrimenti le copie dei nodi divergono e non è
+		possibile raggiungere il consenso.
+	\end{attenzione}
+
+	Ethereum si comporta come un computer decentralizzato: ogni nodo dispone di una
+	macchina virtuale, la \textbf{Ethereum Virtual Machine} (EVM). Dal punto di vista
+	logico la EVM è un'unica istanza globale, un \textit{singleton}: esiste un solo
+	stato, condiviso da tutta la rete. Fisicamente, però, ogni nodo ne mantiene una copia
+	completa, il cui stato deve restare identico a quello delle copie degli altri nodi:
+	la memoria è distribuita nel senso di replicata, non di suddivisa tra i nodi.
+
+    Gli smart contract arrivano ai nodi usando lo stesso principio di come le transazioni
+    arrivano ai nodi nei bitcoin.
+	Ogni nodo esegue individualmente, sulla propria copia, le chiamate agli smart
+	contract attivate dalle transazioni; la blockchain di Ethereum tiene traccia di come
+	lo stato cambia nel tempo per effetto di queste esecuzioni.
+
+	Ethereum, quindi, non è solamente una criptovaluta (ETH): i nodi della rete
+	forniscono le risorse di calcolo di quello che viene definito un \textbf{computer
+	globale}, e ciascuno mette a disposizione la EVM, una macchina virtuale in grado di
+	eseguire programmi.
+
+	Il codice di uno smart contract, scritto in un linguaggio di alto livello come
+	Solidity, viene compilato in bytecode compatibile con la EVM e pubblicato tramite una
+	\textbf{transazione di deploy}, a seguito della quale il contratto entra a far parte
+	dello stato di Ethereum. Per invocarne un metodo si invia una transazione che
+	specifica la funzione da chiamare e i relativi parametri, insieme al mittente,
+	all'eventuale quantità di ETH trasferita e al gas disponibile: ciascun nodo esegue
+	quindi il bytecode del contratto sulla propria EVM e aggiorna di conseguenza lo stato.
+
+	\begin{nota}
+		Quando si dice che i contratti vengono salvati ``nella blockchain'' si semplifica:
+		nella blockchain sono registrate le transazioni, compresa quella di deploy che
+		contiene il bytecode, mentre il contratto, con il suo bytecode e i suoi dati, vive
+		nello stato. Lo stato è il risultato dell'esecuzione ordinata di tutte le
+		transazioni, e nel blocco ne viene salvato solo un hash.
+	\end{nota}
+
+	\section{Ether, la criptovaluta di Ethereum}
+	La criptovaluta della blockchain Ethereum si chiama \textbf{ether}, abbreviato in
+	\textbf{ETH} o indicato con il simbolo $\Xi$. L'ether è suddiviso in unità più
+	piccole; la più piccola possibile è il \textbf{wei}:
+	\[
+		1\ \text{ETH} = 10^{18}\ \text{wei}
+	\]
+
+	\section{Smart contract}
+	\begin{definizione}{Smart contract}{smart-contract}
+		Uno \textbf{smart contract} è un accordo tra due o più parti il cui rispetto
+		viene imposto automaticamente, senza bisogno di un intermediario.
+	\end{definizione}
+
+	Ethereum è stato il primo progetto a implementare gli smart contract su una
+	blockchain in forma generale. In Ethereum uno smart contract è un programma
+	pubblicato sulla blockchain che viene eseguito automaticamente quando si verifica un
+	evento specifico, cioè quando una transazione che lo chiama viene inclusa in un
+	blocco.
+
+	Gli smart contract di Ethereum sono scritti in un linguaggio \textbf{Turing
+	completo}, cioè in grado di esprimere qualsiasi calcolo, e compilati in bytecode
+	eseguibile sulla EVM.
+
+	\section{Stato, account e storage}
+	\subsection{Lo stato globale e gli account}
+	Lo stato di Ethereum (\textit{world state}) è una mappa che associa a ogni
+	\textbf{indirizzo} un \textbf{account}. Un indirizzo è un numero di 20 byte scritto
+	in esadecimale, per esempio \cod{0x5B38Da6a...}. Gli account sono di due tipi:
+	\begin{itemize}
+		\item \textbf{account esterni} (\textit{Externally Owned Account}, EOA): hanno una
+			chiave privata corrispondente, e chi la possiede ha il controllo sull'accesso
+			ai fondi. Può trattarsi di una persona, di un'azienda o di un programma: il
+			protocollo non sa chi c'è dietro, verifica solo la firma. Gli account esterni
+			possono inviare e ricevere token;
+		\item \textbf{account contratto}: sono associati a uno smart contract, di cui
+			contengono il bytecode, e non hanno una chiave privata. Quando una transazione
+			ha come destinatario l'indirizzo di un contratto, il suo codice viene eseguito
+			nella EVM; la transazione indica quale funzione eseguire e con quali
+			parametri. Anche gli account contratto possono inviare e ricevere token.
+	\end{itemize}
+	Solo un account esterno, però, può far partire una transazione: un contratto invia
+	token solo durante la propria esecuzione, cioè quando viene chiamato, e in quel
+	momento può a sua volta chiamare altri contratti.
+
+	Ogni account ha i seguenti campi (figura~\ref{fig:stato-account}):
+	\begin{itemize}
+		\item \textbf{nonce}: un contatore; per un account esterno è il numero di
+			transazioni inviate, per un contratto il numero di contratti che ha creato;
+		\item \textbf{saldo}: gli ETH posseduti dall'account;
+		\item \textbf{codice}: il bytecode, presente solo negli account contratto e non più
+			modificabile dopo il deploy;
+		\item \textbf{storage}: anch'esso presente solo negli account contratto, contiene
+			le variabili del contratto.
+	\end{itemize}
+
+	\begin{figure}[H]
+		\centering
+		\input{immagini/stato-account.tex}
+		\caption{Lo stato globale associa a ogni indirizzo un account: un account esterno
+			ha solo nonce e saldo, un account contratto anche il bytecode e il proprio
+			storage.}
+		\label{fig:stato-account}
+	\end{figure}
+
+	L'indirizzo di un contratto viene calcolato dalla EVM al momento del deploy, a
+	partire dall'indirizzo di chi lo pubblica e dal suo nonce: è quindi deterministico e
+	tutti i nodi ottengono lo stesso valore. Per chiamare il contratto si usa questo
+	indirizzo come destinatario della transazione, come si farebbe per inviare ETH a un
+	account esterno.
+
+	\subsection{Storage}
+	Lo \textbf{storage} è una mappa chiave $\rightarrow$ valore che esiste dentro ogni
+	account contratto e ne contiene le variabili. Si hanno quindi due mappe, una dentro
+	l'altra: lo stato globale associa gli indirizzi agli account, e ogni account contratto
+	ha il proprio storage. La memoria \textit{general purpose} di Ethereum è l'insieme
+	degli storage dei contratti.
+
+	Gli ETH posseduti da un contratto non sono nello storage, ma nel campo saldo del suo
+	account. La differenza è importante: lo storage è gestito dal codice del contratto,
+	mentre il saldo è gestito dal protocollo. Il contratto può leggere il proprio saldo,
+	ma questo cambia solo con trasferimenti veri, cioè quando riceve ETH o ne invia: un
+	contratto non può crearsi ETH dal nulla modificando una variabile.
+
+	\begin{nota}
+		I token creati sopra Ethereum, come quelli ERC-20, non sono ETH: i loro saldi sono
+		proprio nello storage del contratto del token, sotto forma di una mappa
+		indirizzo $\rightarrow$ quantità. Trasferire un token significa chiamare un metodo
+		del contratto che aggiorna questa mappa.
+	\end{nota}
+
+	\begin{nota}[Storage, memory e calldata]
+		In Solidity i dati possono trovarsi in tre posti diversi: lo \cod{storage},
+		persistente e parte dello stato, in cui scrivere costa molto gas; la \cod{memory},
+		temporanea, che esiste solo durante l'esecuzione della chiamata; la
+		\cod{calldata}, che contiene i parametri della transazione in sola lettura.
+	\end{nota}
+
+	\subsection{Esecuzione di una chiamata}
+	Ogni volta che viene effettuata una transazione verso l'indirizzo di un contratto,
+	questa causa l'esecuzione del metodo indicato sulla EVM. Una transazione verso un
+	contratto può contenere il parametro \textbf{ether}, il parametro \textbf{data} o
+	entrambi:
+	\begin{itemize}
+		\item se contiene il parametro \textit{ether} (il campo \cod{value} della
+			transazione), l'ammontare corrispondente viene depositato sul saldo del
+			contratto;
+		\item se contiene il parametro \textit{data}, il suo valore specifica la funzione
+			del contratto da richiamare ed eventualmente gli argomenti da passarle: la
+			funzione viene quindi eseguita sulla EVM.
+	\end{itemize}
+
+	\subsection{Stato e blockchain}
+	Lo stato non è contenuto nei blocchi: è una struttura dati separata, che ogni nodo
+	mantiene nel proprio database ed è sempre aggiornata all'ultimo blocco. Quando una
+	transazione modifica lo storage di un contratto, il nodo aggiorna il proprio stato e
+	non tocca i blocchi precedenti, nemmeno quello che contiene il deploy del contratto.
+	Ogni blocco contiene le transazioni e l'hash dello stato ottenuto applicandole.
+
+	È lo stesso schema di un database con un log delle transazioni: la blockchain è il
+	log, a cui si aggiungono operazioni senza mai modificare quelle precedenti, mentre lo
+	stato è la tabella attuale, ottenuta applicando il log dall'inizio. Se un nodo
+	perdesse lo stato, potrebbe ricostruirlo rieseguendo tutte le transazioni dal primo
+	blocco.
+
+	\begin{nota}
+		Gli stati passati non vengono sovrascritti in modo distruttivo: lo stato è
+		organizzato come un albero di hash (\textit{Merkle Patricia Trie}) e, quando cambia
+		una variabile, si creano nuovi nodi solo per il percorso modificato, condividendo
+		il resto con la versione precedente. Per questo l'hash di stato salvato in ogni
+		blocco resta valido.
+	\end{nota}
+
+	\section{Struttura di una transazione}\label{sec:struttura-transazione}
+	Una transazione Ethereum è composta dai seguenti campi
+	(figura~\ref{fig:transazione}):
+	\begin{itemize}
+		\item \cod{chainId}: la rete a cui è destinata la transazione, per esempio 1 per
+			la rete principale. Entra nella firma, quindi una transazione firmata per una
+			rete di test non può essere ripresentata sulla rete principale;
+		\item \cod{nonce}: un numero sequenziale usato per evitare l'attacco di
+			\textit{message replay};
+		\item \cod{gasPrice}: il prezzo a cui si è disposti a pagare un'unità di gas;
+		\item \cod{gasLimit}: la quantità massima di gas che si è disposti a pagare;
+		\item \cod{to}: l'indirizzo del destinatario, account esterno o contratto; è
+			vuoto nella transazione di deploy;
+		\item \cod{value}: la quantità di ether da trasferire, espressa in wei;
+		\item \cod{data}: un \textit{payload} binario di dimensione variabile, che
+			contiene la funzione da chiamare e i suoi argomenti, il bytecode nel caso di
+			un deploy, oppure nulla per un semplice trasferimento di ether;
+		\item \cod{v}, \cod{r}, \cod{s}: le componenti della firma ECDSA. La coppia
+			$(r, s)$ costituisce la firma: $r$ è la coordinata $x$ di un punto della curva
+			ellittica e $s$ il valore della firma; $v$ indica quale dei due punti della
+			curva con quella coordinata va usato.
+			% TODO: studiare come funziona la curva ellittica e come si calcolano r, v, s (ECDSA)
+	\end{itemize}
+
+	\begin{figure}[H]
+		\centering
+		\input{immagini/transazione.tex}
+		\caption{Una transazione provoca una transizione dallo stato $n$ allo stato
+			$n+1$.}
+		\label{fig:transazione}
+	\end{figure}
+
+	Tra i campi manca il mittente: non serve indicarlo, perché grazie al valore $v$
+	dalla firma si può ricavare la chiave pubblica di chi ha firmato, e quindi il suo
+	indirizzo. In questo modo è anche impossibile mentire su chi ha inviato la
+	transazione.
+
+	Per essere firmata, trasmessa e salvata nei blocchi, una transazione viene
+	serializzata con lo schema \textbf{RLP} (\textit{Recursive-Length Prefix}), il
+	formato standard di Ethereum, in cui ogni campo è preceduto dalla propria
+	lunghezza. L'hash della transazione serializzata ne costituisce l'identificativo.
+
+	Lo stato che una transazione modifica è lo stato globale. Nella maggior parte dei
+	casi gli indirizzi presenti nella mappa restano gli stessi e cambia il contenuto di
+	uno o più account: almeno nonce e saldo del mittente, ed eventualmente saldi e
+	storage di altri account. Alcune transazioni aggiungono invece nuovi account: il
+	deploy di un contratto, oppure il primo trasferimento di ether verso un indirizzo
+	mai usato, che solo in quel momento entra nello stato.
+
+	\subsection{Il nonce di un EOA}
+	Il \textbf{nonce} di un account esterno è un valore che rappresenta il numero di
+	transazioni inviate dall'account. Viene calcolato dinamicamente, contando il numero
+	di transazioni confermate inviate dall'account.
+
+	I nonce vengono mantenuti dai wallet, che li incrementano per ogni transazione
+	inviata dall'account. I nodi hanno il compito di controllare i nonce delle
+	transazioni ricevute: ciascun nodo conta il numero $n$ di transazioni che ha
+	ricevuto da ciascun account esterno. Se il nonce della transazione corrente è minore
+	di $n+1$, la transazione viene rifiutata; se è maggiore di $n+1$, la sua esecuzione
+	viene rimandata. In questo modo:
+	\begin{itemize}
+		\item le transazioni provenienti dallo stesso account vengono eseguite nel giusto
+			ordine;
+		\item una transazione non può essere eseguita più di una volta, perché ciascuna è
+			resa univoca: è una protezione dalla duplicazione delle transazioni.
+	\end{itemize}
+
+	\begin{attenzione}
+		Mantenere traccia dei nonce è complesso se si usano client concorrenti.
+	\end{attenzione}
+
+	\section{Il gas}
+	Oltre alla criptovaluta ether, Ethereum utilizza un'altra unità di scambio detta
+	\textbf{gas}: è il ``carburante'' che consente l'esecuzione dei contratti. Ethereum
+	usa il gas per controllare la \textbf{quantità massima di risorse} che una
+	transazione può consumare durante la sua esecuzione. Questo permette di:
+	\begin{itemize}
+		\item evitare attacchi di tipo \textit{denial of service} (DoS);
+		\item evitare che una transazione assorba inavvertitamente tutte le risorse del
+			sistema.
+	\end{itemize}
+	Gas ed ether sono due criptovalute diverse, ciascuna con il proprio valore: l'uso di
+	due criptovalute permette di proteggere il sistema dalla volatilità dell'ether.
+
+	Ciascuna transazione che invoca una funzione di uno smart contract deve indicare:
+	\begin{itemize}
+		\item \cod{gasPrice}: il prezzo per unità di gas che si è disposti a pagare;
+			maggiore è il prezzo, potenzialmente maggiore è la velocità di scheduling
+			della transazione;
+		\item \cod{gasLimit}: il numero massimo di unità di gas che si è disposti a
+			comprare per completare la transazione.
+	\end{itemize}
+	Al termine dell'esecuzione viene pagato solo il gas effettivamente usato, mentre
+	quello non usato ritorna al mittente:
+	\[
+		\text{fee pagata} = \text{gas usato} \times \text{gasPrice}, \qquad
+		\text{rimborso al mittente} = (\text{gasLimit} - \text{gas usato}) \times
+		\text{gasPrice}
+	\]
+
+	Ogni istruzione ha un costo predefinito in unità di gas. Quando una transazione
+	attiva l'esecuzione di uno smart contract, deve specificare il limite massimo di gas
+	che si intende consumare per l'esecuzione: se questo quantitativo non è sufficiente,
+	l'esecuzione del contratto viene terminata e viene eseguito il \textbf{rollback}
+	della transazione.
+
+	Il gas è il meccanismo attraverso il quale Ethereum permette computazioni
+	Turing-complete pur limitando la quantità di risorse che ciascuno smart contract
+	può consumare. Un linguaggio Turing completo permette cicli senza un limite fissato
+	in anticipo, quindi un programma può anche non terminare mai; inoltre, per il
+	\textbf{problema della fermata}, non esiste un algoritmo in grado di stabilire in
+	anticipo se un programma qualsiasi terminerà. Senza il gas basterebbe chiamare un
+	contratto contenente un ciclo infinito per bloccare tutti i nodi della rete. Con il
+	gas, invece, ogni istruzione ha un costo e il gas limit è finito: ogni esecuzione si
+	ferma al più dopo aver consumato tutto il gas disponibile e, poiché il costo di ogni
+	istruzione è lo stesso su tutti i nodi, tutti si fermano esattamente nello stesso
+	punto.
+
+	\begin{nota}
+		Per questo la EVM viene detta \textit{quasi} Turing completa: in teoria può
+		esprimere qualsiasi calcolo, ma ogni singola esecuzione è limitata dal gas.
+		Bitcoin ha fatto la scelta opposta: il suo linguaggio di script non ha cicli,
+		quindi i programmi terminano sempre per costruzione, ma può esprimere molto meno.
+	\end{nota}
+
+	\section{Consenso}
+	\begin{definizione}{Consenso}{consenso}
+		Il \textbf{consenso} è un accordo generalizzato che deve essere raggiunto.
+	\end{definizione}
+
+	\begin{definizione}{Meccanismo di consenso}{meccanismo-consenso}
+		In una blockchain, il \textbf{meccanismo di consenso} è l'insieme dei protocolli,
+		degli incentivi e delle idee che permettono a una rete decentralizzata di nodi di
+		raggiungere un accordo sullo stato della blockchain.
+	\end{definizione}
+
+	In informatica il consenso è legato al problema più generale della
+	\textbf{sincronizzazione dello stato di un sistema distribuito}: i partecipanti a un
+	sistema distribuito devono poter raggiungere un accordo sullo stato globale del
+	sistema. In un sistema distribuito, infatti, non c'è un'entità centrale che decide
+	che cosa sia vero.
+
+	\subsection{Protocolli di consenso}
+	Esistono vari protocolli di consenso:
+	\begin{itemize}
+		\item \textbf{Proof of Work} (PoW): costoso e può causare fork della rete;
+		\item \textbf{Proof of Stake} (PoS): conta di più chi possiede più token;
+		\item \textbf{Proof of Space}: conta di più chi consuma più memoria;
+		\item \textbf{Proof of Authority}: conta di più chi ha più autorità.
+	\end{itemize}
+	Tutti stabiliscono chi ha il diritto di scrivere il prossimo blocco. In una rete
+	aperta non si può contare un voto per nodo, perché chiunque potrebbe creare
+	moltissimi nodi fittizi (\textit{attacco Sybil}): ogni protocollo lega quindi il peso
+	di un partecipante a una risorsa scarsa, cioè potenza di calcolo (PoW), token in
+	garanzia (PoS), spazio su disco (Proof of Space) oppure un'identità riconosciuta
+	(Proof of Authority, usata nelle blockchain private).
+
+	\subsection{Proof of Work}\label{sec:pow}
+	L'algoritmo di consenso inventato da S.~Nakamoto per Bitcoin è la \textbf{Proof of
+	Work} (PoW). L'obiettivo del mining, e di tutti i modelli di consenso, è rendere
+	\textbf{sicura} la blockchain, mantenendo il controllo attraverso una \textbf{rete
+	decentralizzata e diffusa} tra quanti più partecipanti possibile.
+
+	Il consenso PoW è un attento bilanciamento tra rischi e ricompense che ``obbligano''
+	i partecipanti a \textbf{comportarsi onestamente per il proprio interesse
+	personale}: per riscrivere la storia servirebbe più potenza di calcolo di tutto il
+	resto della rete. Il prezzo da pagare sono i fork (sezione~\ref{sec:fork}): una
+	transazione diventa sempre più sicura con le conferme, ma non è mai definitiva in
+	senso assoluto.
+
+	Il problema da risolvere dipende dalla blockchain:
+	\begin{itemize}
+		\item la PoW di Bitcoin è la ricerca di un \textit{nonce} che produca per il blocco
+			un valore di hash con specifiche caratteristiche
+			(sezione~\ref{sec:fase3-mining});
+		\item la PoW di Ethereum si chiamava \textbf{Ethash}: generava e analizzava un
+			DAG (\textit{Directed Acyclic Graph}) di grandi dimensioni ed era \textit{ASIC
+			resistant}, cioè un algoritmo ad alto consumo di memoria, adatto alle GPU. Gli
+			sviluppatori di Ethereum hanno atteso a lungo prima di passare alla PoS.
+	\end{itemize}
+
+	\subsection{Proof of Stake: Ethereum}\label{sec:pos}
+	A partire dal 2022 Ethereum ha adottato un protocollo di consenso PoS chiamato
+	\textbf{Gasper}. La blockchain tiene traccia di una serie di \textbf{validatori}:
+	chiunque possieda degli ETH può diventare validatore attraverso una transazione
+	speciale con cui deposita 32 ETH in un \textbf{contratto di deposito}, dove restano
+	bloccati.
+
+	Ciascun nodo della rete deve mettere in esecuzione due software:
+	\begin{itemize}
+		\item l'\textbf{execution client}, che riceve i blocchi e le transazioni e le
+			esegue all'interno della EVM, verificandone la correttezza;
+		\item il \textbf{consensus client}, che esegue il protocollo di consenso e
+			permette a tutti i nodi della rete di essere d'accordo sullo stato globale.
+	\end{itemize}
+
+	A turno i validatori propongono e votano il prossimo blocco valido: chi propone il
+	blocco viene estratto con probabilità proporzionale al deposito, e il peso del voto
+	di ciascun validatore dipende dalla dimensione del deposito, detta \textbf{stake}.
+
+	Il protocollo PoS di Ethereum è basato su due algoritmi:
+	\begin{itemize}
+		\item \textbf{LMD-GHOST}, l'algoritmo per la gestione dei fork: viene usato per
+			selezionare l'ultimo blocco che i nodi devono considerare valido nella loro
+			visione locale della blockchain. Questo blocco è chiamato \textit{head of the
+			chain};
+		\item \textbf{Casper FFG}, l'algoritmo per la finalizzazione dei blocchi.
+	\end{itemize}
+
+	Come nella PoW, il comportamento onesto è garantito da un sistema di
+	\textbf{ricompense e punizioni}, ma nella PoS le punizioni sono intrinseche nel
+	protocollo:
+	\begin{itemize}
+		\item i validatori ricevono una ricompensa, proporzionale al loro deposito, per
+			ogni blocco accettato dalla maggioranza;
+		\item i validatori possono perdere i propri depositi se mentono, cioè se il blocco
+			che propongono è rigettato dalla maggioranza degli altri validatori. È lo
+			\textbf{slashing}, che punisce per esempio chi firma o vota due blocchi in
+			conflitto, cioè diversi per la stessa posizione della catena.
+	\end{itemize}
+	Per questo i costi per attaccare la rete sono molto alti.
+
+	La PoS è una variante dell'algoritmo di \textbf{Practical Byzantine Fault Tolerance}
+	(PBFT)\footnote{M.~Castro, B.~Liskov, \textit{Practical Byzantine Fault Tolerance
+	and Proactive Recovery}, ACM Transactions on Computer Systems, 20(4):398--461,
+	2002.}, che risolve il problema dei \textbf{generali bizantini}: raggiungere un
+	accordo anche se alcuni partecipanti sono guasti o disonesti. Con $n$ nodi noti il
+	PBFT funziona finché quelli disonesti sono al massimo $f$, con $n \ge 3f+1$, e una
+	decisione viene presa quando la approvano almeno $2f+1$ nodi. La PoS usa lo stake per
+	stabilire chi partecipa e vota in stile BFT: un blocco approvato da validatori che
+	rappresentano i $2/3$ dello stake diventa definitivo (\textit{finalizzato}) grazie a
+	Casper FFG, a differenza di quanto accade nella PoW.
+
+	La tabella~\ref{tab:miner-validatore} riassume le differenze tra miner e validatori.
+
+	\begin{table}[H]
+		\centering
+		\small
+		\begin{tabularx}{\textwidth}{lXX}
+			\toprule
+			& \textbf{Miner (PoW)} & \textbf{Validatore (PoS)} \\
+			\midrule
+			Risorsa in gioco & hardware ed energia & ETH in garanzia \\
+			Diritto di creare un blocco & vince la gara del nonce & estratto a sorte in
+				base allo stake \\
+			Altro compito & --- & vota i blocchi proposti dagli altri \\
+			Comportamento scorretto & spreca energia & slashing \\
+			Blocco definitivo & mai in senso assoluto & con i voti di $2/3$ dello stake \\
+			\bottomrule
+		\end{tabularx}
+		\caption{Differenze tra miner e validatore.}
+		\label{tab:miner-validatore}
+	\end{table}
+
+	\subsection{Esecuzione di una transazione in Ethereum}
+	In Ethereum una transazione attraversa i seguenti passi:
+	\begin{enumerate}
+		\item Alice crea e firma la transazione;
+		\item l'\textbf{execution client} verifica la validità della transazione;
+		\item la transazione viene aggiunta alla mempool locale;
+		\item la transazione viene diffusa alla rete (\textit{broadcast}).
+	\end{enumerate}
+	Nel verificare la transazione, l'execution client si assicura che:
+	\begin{itemize}
+		\item il mittente abbia abbastanza ether per completare la transazione;
+		\item la transazione sia stata firmata con la chiave privata corretta.
+	\end{itemize}
+	Il saldo del mittente deve coprire sia gli ether eventualmente trasferiti sia il
+	costo massimo del gas, convertito in ether tramite il gas price:
+	\[
+		\text{saldo del mittente} \ge \text{value} + \text{gasLimit} \times
+		\text{gasPrice}
+	\]
+	Si usa il gas limit, e non il gas effettivamente usato, perché in questa fase la
+	transazione non è ancora stata eseguita: si controlla quindi il caso peggiore, e il
+	gas non usato viene restituito al termine dell'esecuzione.
+
+	Se la transazione è valida, l'execution client la aggiunge alla propria mempool
+	locale, cioè la lista delle transazioni pendenti, e la trasmette in broadcast a
+	tutti gli altri nodi. Gli altri nodi che ricevono la transazione la aggiungono a
+	loro volta alla propria mempool locale.
 	%TEORICA%
 
 \end{document}
