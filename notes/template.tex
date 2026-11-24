@@ -849,6 +849,18 @@
 			resa univoca: è una protezione dalla duplicazione delle transazioni.
 	\end{itemize}
 
+	\begin{definizione}{Message replay}{message-replay}
+		Il \textbf{message replay} è un attacco in cui qualcuno intercetta una
+		transazione già firmata e la reinvia alla rete per farla eseguire di nuovo. Poiché
+		la firma resta valida, senza un controllo la stessa transazione, per esempio un
+		pagamento, verrebbe eseguita più volte.
+	\end{definizione}
+
+	Il nonce impedisce questo attacco: fa parte dei dati firmati e deve essere quello
+	atteso per il mittente, quindi la copia reinviata ha un nonce già usato e viene
+	rifiutata. Modificarlo non serve, perché cambierebbero i dati firmati e la firma non
+	sarebbe più valida.
+
 	\begin{attenzione}
 		Mantenere traccia dei nonce è complesso se si usano client concorrenti.
 	\end{attenzione}
@@ -968,7 +980,9 @@
 	\textbf{Gasper}. La blockchain tiene traccia di una serie di \textbf{validatori}:
 	chiunque possieda degli ETH può diventare validatore attraverso una transazione
 	speciale con cui deposita 32 ETH in un \textbf{contratto di deposito}, dove restano
-	bloccati.
+	bloccati. Quando un utente ha depositato il numero minimo di ether richiesti, viene
+	aggiunto a una \textbf{coda di attivazione} (\textit{activation queue}), che serve a
+	limitare il ritmo con cui nuovi validatori si uniscono alla rete.
 
 	Ciascun nodo della rete deve mettere in esecuzione due software:
 	\begin{itemize}
@@ -1005,15 +1019,9 @@
 	Per questo i costi per attaccare la rete sono molto alti.
 
 	La PoS è una variante dell'algoritmo di \textbf{Practical Byzantine Fault Tolerance}
-	(PBFT)\footnote{M.~Castro, B.~Liskov, \textit{Practical Byzantine Fault Tolerance
+	(BFT)\footnote{M.~Castro, B.~Liskov, \textit{Practical Byzantine Fault Tolerance
 	and Proactive Recovery}, ACM Transactions on Computer Systems, 20(4):398--461,
-	2002.}, che risolve il problema dei \textbf{generali bizantini}: raggiungere un
-	accordo anche se alcuni partecipanti sono guasti o disonesti. Con $n$ nodi noti il
-	PBFT funziona finché quelli disonesti sono al massimo $f$, con $n \ge 3f+1$, e una
-	decisione viene presa quando la approvano almeno $2f+1$ nodi. La PoS usa lo stake per
-	stabilire chi partecipa e vota in stile BFT: un blocco approvato da validatori che
-	rappresentano i $2/3$ dello stake diventa definitivo (\textit{finalizzato}) grazie a
-	Casper FFG, a differenza di quanto accade nella PoW.
+	2002.}.
 
 	La tabella~\ref{tab:miner-validatore} riassume le differenze tra miner e validatori.
 
@@ -1063,6 +1071,389 @@
 	locale, cioè la lista delle transazioni pendenti, e la trasmette in broadcast a
 	tutti gli altri nodi. Gli altri nodi che ricevono la transazione la aggiungono a
 	loro volta alla propria mempool locale.
+
+	\subsection{Creazione di un blocco in Ethereum}
+	La creazione di un nuovo blocco avviene in quattro passi:
+	\begin{enumerate}
+		\item \textbf{scelta del proponente}: a ogni slot, un intervallo di 12 secondi, uno
+			dei validatori viene scelto casualmente come \textbf{proponente del nuovo
+			blocco} (sezione~\ref{sec:pos}). Il proponente è responsabile della
+			costruzione del nuovo blocco, della sua trasmissione nella rete e
+			dell'aggiornamento dello stato globale;
+		\item \textbf{scelta ed esecuzione delle transazioni}: l'execution client del
+			proponente estrae le transazioni dalla mempool e le esegue localmente,
+			causando un cambiamento dello stato globale (\textit{execution payload});
+		\item \textbf{costruzione del blocco}: il consensus client combina l'execution
+			payload con il blocco proposto, che oltre alle transazioni contiene una serie
+			di altre informazioni utili per la validazione, come ricompense, penalità e
+			attestazioni;
+		\item \textbf{broadcast}: gli altri nodi della rete ricevono il blocco proposto
+			attraverso il \textbf{consensus gossip layer} della rete.
+	\end{enumerate}
+
+	\begin{definizione}{Execution payload}{execution-payload}
+		L'\textbf{execution payload} è la parte del blocco prodotta dall'execution client:
+		la lista ordinata delle transazioni scelte ed eseguite, insieme ai dati che ne
+		descrivono il risultato.
+	\end{definizione}
+
+	Oltre alle transazioni, l'execution payload contiene l'hash dello stato globale
+	ottenuto dopo averle eseguite, il gas consumato, le ricevute delle transazioni (con
+	il loro esito e gli eventi emessi) e l'indirizzo a cui vanno le fee. Il consensus
+	client lo inserisce nel blocco proposto, aggiungendo le informazioni che riguardano
+	il consenso: slot, proponente, attestazioni, ricompense, penalità e firma del
+	proponente.
+
+	\subsection{Validazione di un blocco in Ethereum}
+	Quando un nodo riceve un nuovo blocco, la validazione avviene in quattro passi:
+	\begin{enumerate}
+		\item \textbf{ricezione del nuovo blocco}: gli altri nodi della rete ricevono il
+			blocco proposto attraverso il consensus gossip layer, ne controllano la firma
+			e lo passano all'execution client;
+		\item \textbf{ri-esecuzione delle transazioni}: l'execution client riesegue
+			localmente le transazioni contenute nel blocco proposto, per assicurarsi che il
+			cambiamento di stato proposto sia valido;
+		\item \textbf{verifica del blocco}: l'algoritmo LMD-GHOST attesta che il blocco sia
+			valido e che sia logicamente il prossimo blocco della blockchain;
+		\item \textbf{finalizzazione}: la transazione si considera \textbf{finalizzata},
+			cioè non può più essere cancellata, se è diventata parte della catena
+			attraverso un \textbf{supermajority link} tra due \textbf{checkpoint}. È il
+			compito di Casper FFG.
+	\end{enumerate}
+
+	\subsubsection{Slot, epoche e attestazioni}
+	Nella PoS di Ethereum il tempo è diviso in \textbf{slot} di 12 secondi, numerati uno
+	dopo l'altro e uguali per tutta la rete, e in \textbf{epoche} di 32 slot, cioè circa
+	6,4 minuti. In ogni slot:
+	\begin{itemize}
+		\item un validatore, il \textbf{proponente}, viene selezionato in modo
+			pseudo-casuale per creare e proporre il nuovo blocco;
+		\item un sottoinsieme dei validatori, il \textbf{comitato}, pubblica la propria
+			\textbf{attestazione}, cioè il proprio voto.
+	\end{itemize}
+	Uno slot è quindi un intervallo di tempo e non un blocco: se il proponente è offline
+	o pubblica in ritardo, lo slot resta vuoto. Ogni validatore vota una sola volta per
+	epoca: i validatori sono suddivisi in 32 comitati, uno per slot, così da distribuire
+	i voti nel tempo e non sovraccaricare la rete.
+
+	Ogni validatore invia un'unica attestazione, con una sola firma, che contiene due
+	voti:
+	\begin{itemize}
+		\item il voto per la \textit{head of the chain}, usato da LMD-GHOST per scegliere
+			il ramo da seguire;
+		\item il voto per Casper FFG, una coppia di checkpoint \textit{source}
+			$\rightarrow$ \textit{target}: il \textbf{target} è il checkpoint dell'epoca
+			corrente, la \textbf{source} è l'ultimo checkpoint giustificato noto al
+			validatore. Ogni checkpoint è indicato con il numero della sua epoca e con
+			l'hash del blocco.
+	\end{itemize}
+	Le due parti hanno un effetto diverso sul blocco appena proposto:
+	\begin{itemize}
+		\item il voto per la head riguarda proprio quel blocco, se è arrivato in tempo (i
+			validatori votano circa 4 secondi dopo l'inizio dello slot), e gli dà subito
+			peso nella scelta del ramo fatta da LMD-GHOST;
+		\item il voto source $\rightarrow$ target è invece lo stesso per tutti gli slot
+			dell'epoca: per il blocco appena proposto la finalità arriva solo di
+			riflesso, quando viene finalizzato il primo checkpoint successivo.
+	\end{itemize}
+	Le attestazioni di uno slot vengono incluse dal proponente nel blocco dello slot
+	successivo: in questo modo i voti finiscono scritti nella catena, ed è da lì che
+	vengono contati a fine epoca.
+
+	La proposta di un blocco e la sua giustificazione sono quindi due cose distinte: il
+	proponente crea il blocco, mentre giustificazione e finalizzazione derivano dai voti
+	contenuti nelle attestazioni.
+
+	\subsubsection{Casper FFG}
+	Casper FFG (\textit{Friendly Finality Gadget}) è un protocollo di
+	\textbf{meta-consenso} usato per finalizzare i blocchi validati: non produce blocchi
+	e non sceglie la head, ma lavora sopra la proposta dei blocchi e LMD-GHOST,
+	assicurando che i blocchi confermati da almeno i $2/3$ dei validatori non possano più
+	essere rimossi.
+
+	Essere inclusi nella catena non significa essere definitivi. In PoS i fork sono
+	molto più rari che in PoW, perché per ogni slot c'è un solo proponente stabilito in
+	anticipo e non c'è una gara tra miner; possono però ancora capitare, per esempio se
+	un blocco viene pubblicato in ritardo e il proponente successivo costruisce sopra il
+	blocco precedente. In questi casi LMD-GHOST sceglie il ramo che ha ricevuto più voti,
+	pesati per lo stake. Finché non è finalizzato, quindi, un blocco potrebbe ancora
+	essere scartato.
+
+	Casper FFG non ragiona sui singoli blocchi, ma su un \textbf{checkpoint} per epoca,
+	cioè il blocco contenuto nel primo slot. I voti source $\rightarrow$ target dei
+	comitati si accumulano slot dopo slot e a fine epoca vengono contati: un
+	\textbf{supermajority link} è un collegamento tra due checkpoint votato da validatori
+	che rappresentano almeno i $2/3$ dello stake totale. Un supermajority link
+	$S \rightarrow T$:
+	\begin{itemize}
+		\item rende sempre \textbf{giustificato} il target $T$;
+		\item rende \textbf{finalizzata} la source $S$, se $S$ e $T$ sono checkpoint di
+			epoche consecutive, oppure se tutti i checkpoint tra $S$ e $T$ sono a loro
+			volta giustificati.
+	\end{itemize}
+	In condizioni normali, quindi, in una sola epoca si giustifica il target e si
+	finalizza la source, e ogni checkpoint passa per due fasi in due epoche diverse:
+	prima è target e viene giustificato, poi è source e viene finalizzato
+	(figura~\ref{fig:checkpoint}). Se invece un'epoca non riesce a farsi giustificare, il
+	link successivo parte ancora dall'ultimo checkpoint giustificato e ``salta''
+	un'epoca: in questo caso giustifica il target, ma non finalizza la source.
+
+	\begin{figure}[H]
+		\centering
+		\input{immagini/checkpoint.tex}
+		\caption{Checkpoint e supermajority link. La catena è formata dai puntatori al
+			blocco precedente; il supermajority link non è un puntatore ma il risultato dei
+			voti: se votato da almeno $2/3$ dello stake, giustifica il checkpoint di arrivo
+			e finalizza quello di partenza.}
+		\label{fig:checkpoint}
+	\end{figure}
+
+	Un link può però saltare un'epoca anche quando il checkpoint in mezzo è
+	giustificato. Quando un nodo osserva che il checkpoint dell'epoca $N+1$ è
+	giustificato e che c'è un consenso, cioè un supermajority link, che arriva al suo
+	figlio diretto, il checkpoint dell'epoca $N+2$, allora il padre, il checkpoint
+	dell'epoca $N$, viene finalizzato. Il link parte da $C_N$ e scavalca $C_{N+1}$: se
+	$C_N$ e $C_{N+1}$ sono giustificati e il link $C_N \rightarrow C_{N+2}$ raccoglie più
+	dei $2/3$ dei voti, $C_{N+2}$ diventa giustificato e $C_N$ finalizzato
+	(figura~\ref{fig:finalizzazione-salto}). Può
+	succedere perché i voti di un'epoca possono essere inclusi nei blocchi anche durante
+	l'epoca successiva: i validatori possono quindi votare nell'epoca $N+2$ quando la
+	giustificazione di $C_{N+1}$ non è ancora stata registrata, usando come source
+	$C_N$, mentre i voti per $C_{N+1}$, contati in ritardo, lo rendono comunque
+	giustificato.
+
+	\begin{figure}[H]
+		\centering
+		\input{immagini/finalizzazione-salto.tex}
+		\caption{Finalizzazione con un link che salta un'epoca: $C_N$ e $C_{N+1}$ sono
+			giustificati e il link $C_N \rightarrow C_{N+2}$ supera i $2/3$ dei voti,
+			quindi $C_{N+2}$ diventa giustificato e $C_N$ finalizzato.}
+		\label{fig:finalizzazione-salto}
+	\end{figure}
+
+	La giustificazione si svolge così: ciascun validatore, nel proprio slot, diffonde in
+	broadcast la propria visione sul checkpoint dell'epoca corrente, cioè il proprio voto;
+	tutti i nodi, compresi quelli che in quel momento non votano, si mettono in ascolto,
+	ricevono le attestazioni e verificano se la supermaggioranza è d'accordo. Se è così,
+	il checkpoint è giustificato. Questa approvazione è \textbf{locale} al nodo: nessuno
+	annuncia che un checkpoint è giustificato, ma ogni nodo ci arriva contando da solo i
+	voti ricevuti. Tutti giungono alla stessa conclusione perché i voti vengono inclusi
+	nei blocchi, anche se per un breve momento un nodo può già considerare giustificato
+	un checkpoint per cui un altro non ha ancora ricevuto abbastanza voti.
+
+	La finalizzazione richiede quindi due round di voti: un checkpoint giustificato è
+	stato riconosciuto dalla maggioranza e diventa definitivo quando la maggioranza
+	conferma di costruire la catena sopra di lui. Nel secondo round i validatori
+	annunciano di aver sentito che la supermaggioranza supporta il checkpoint: serve a
+	verificare che anche il resto della rete confermi l'esistenza di questa
+	supermaggioranza e, se avviene, il checkpoint è finalizzato. Mentre la giustificazione
+	è una conclusione locale di ogni nodo, la finalizzazione è uno stato globale della
+	blockchain. In pratica l'annuncio non è un messaggio separato: è il voto dell'epoca
+	successiva, che usa il checkpoint come source. Il voto source $\rightarrow$ target è
+	quindi il secondo round per la source e il primo per il target. Avere sia la source sia il
+	target nel voto permette inoltre di individuare, e punire con lo slashing, i
+	validatori che votano collegamenti incompatibili.
+
+	La validazione ottenuta per un checkpoint si estende da esso fino al checkpoint
+	precedente. Il voto non deve ricreare il collegamento con i blocchi intermedi, che
+	esiste già nella catena: ogni blocco contiene l'hash del blocco precedente, quindi
+	l'hash del target dipende da tutta la storia che lo precede, e votarlo significa
+	votare esattamente quella storia, blocco per blocco. Quando conta un voto, un nodo
+	controlla soltanto che il target sia un discendente della source, cioè che risalendo
+	i puntatori dal target si arrivi alla source.
+
+	Formalmente giustificazione e finalizzazione riguardano solo i checkpoint: i blocchi
+	tra due checkpoint diventano definitivi quando viene finalizzato il primo checkpoint
+	successivo a loro. Un blocco dell'epoca $n$ deve quindi aspettare la fine della
+	propria epoca, perché nasca il checkpoint $C_{n+1}$, poi l'epoca $n+1$, in cui
+	$C_{n+1}$ viene giustificato, e infine l'epoca $n+2$, in cui viene finalizzato: in
+	tutto tra circa 2 e 3 epoche, cioè tra 13 e 19 minuti, a seconda della sua posizione
+	nell'epoca.
+
+	Esecuzione e finalità avvengono quindi a livelli diversi: l'execution client
+	riesegue le transazioni di ogni blocco, a ogni slot, mentre Casper FFG vota la
+	finalità una volta per epoca, sui soli checkpoint.
+
+	Annullare un blocco finalizzato richiederebbe che almeno $1/3$ dello stake votasse
+	in modo contraddittorio, cosa punita con lo slashing: chi volesse farlo perderebbe
+	una quantità enorme di ETH. In altre parole, per eliminare un blocco finalizzato un
+	attaccante deve essere disposto a perdere $1/3$ del totale degli ether in stake: i
+	voti contraddittori sono firmati e restano come prova, e la penalità cresce con il
+	numero di validatori puniti nello stesso periodo, fino a far perdere quasi tutto lo
+	stake se ne vengono puniti abbastanza da arrivare a $1/3$. Per questo si parla di
+	\textbf{finalità economica}: annullare un blocco finalizzato non è impossibile, ma ha
+	un costo enorme.
+
+	La soglia dei $2/3$, detta \textbf{supermaggioranza}, non è casuale. Due insiemi di
+	validatori che rappresentano ciascuno almeno i $2/3$ dello stake si sovrappongono per
+	almeno $2/3 + 2/3 - 1 = 1/3$: se due checkpoint in conflitto venissero entrambi
+	approvati, almeno un terzo dello stake avrebbe votato per tutti e due e verrebbe
+	punito con lo slashing. Con la maggioranza semplice la sovrapposizione sarebbe minima
+	($51\% + 51\% - 100\% = 2\%$) e basterebbe un piccolo gruppo di validatori disonesti
+	per far approvare due decisioni in conflitto. Una soglia più alta renderebbe invece
+	la rete fragile, perché basterebbe una piccola quota di validatori offline per
+	bloccare la finalità: con i $2/3$ il sistema resta sicuro e continua a funzionare
+	finché meno di un terzo dello stake è disonesto o offline.
+
+	\subsubsection{Quando la finalità si ferma}
+	Un checkpoint può restare solo giustificato:
+	\begin{itemize}
+		\item sempre, nel caso dell'ultimo checkpoint giustificato, finché non arrivano i
+			voti dell'epoca successiva;
+		\item se il checkpoint dell'epoca successiva non raggiunge i $2/3$ dei voti;
+		\item se va offline più di $1/3$ dello stake, per un guasto, una divisione della
+			rete o un bug diffuso (è successo sulla rete principale di Ethereum nel 2023):
+			la catena continua a crescere, perché i validatori attivi propongono blocchi e
+			LMD-GHOST ne sceglie la testa, ma nessun checkpoint può più raggiungere i
+			$2/3$ e quindi nessun blocco diventa definitivo;
+		\item se un attaccante che controlla più di $1/3$ dello stake, apposta, non vota o
+			vota diversamente dagli altri: anche in questo caso nessun checkpoint
+			raggiunge i $2/3$, e la rete va in stallo.
+	\end{itemize}
+
+	Negli ultimi due casi lo stallo viene impedito dall'\textbf{inactivity leak}: se la
+	rete non riesce a finalizzare per più di 4 epoche, i validatori che non
+	contribuiscono alla finalizzazione, cioè quelli offline o che non votano il target
+	della catena seguita dalla maggioranza, perdono gradualmente parte del proprio
+	stake, sempre più velocemente man mano che lo stallo continua; se lo stake di un
+	validatore scende sotto i 16 ETH, il validatore viene espulso. La quota dei
+	validatori attivi cresce così rispetto al totale finché supera i $2/3$: da quel
+	momento i loro voti tornano sufficienti e la finalizzazione riparte sulla catena che
+	hanno costruito, a partire dal checkpoint rimasto giustificato. Per un attaccante lo
+	stallo diventa quindi costoso e temporaneo, perché mentre blocca la rete il suo stake
+	si consuma. Durante il leak anche chi vota correttamente non riceve ricompense:
+	evita soltanto le penalità.
+
+	Le penalità del leak colpiscono chi è assente in modo continuato, non chi sbaglia
+	occasionalmente. Il protocollo tiene per ogni validatore un \textbf{punteggio di
+	inattività}, che sale a ogni epoca in cui il validatore non vota il target corretto e
+	scende quando torna a votarlo, e la penalità è proporzionale a questo punteggio: un
+	blocco ricevuto in ritardo ogni tanto costa quindi una perdita trascurabile, mentre
+	chi resta offline a lungo perde stake sempre più velocemente. In condizioni normali,
+	quando la finalità funziona, un ritardo costa al massimo la ricompensa per la parte
+	di voto sbagliata.
+
+	\begin{nota}
+		Se la rete si divide in due gruppi entrambi attivi ma isolati, ciascuno vede
+		l'altro come offline e l'inactivity leak agisce da entrambe le parti: dopo un
+		tempo sufficientemente lungo, ciascun gruppo potrebbe finalizzare la propria
+		catena. È un compromesso voluto: Ethereum preferisce che la rete continui a
+		funzionare anche in caso di guasti gravi, accettando questo rischio in uno
+		scenario estremo e molto improbabile.
+	\end{nota}
+
+	\subsubsection{LMD-GHOST: la fork choice rule}
+	LMD-GHOST è la \textbf{fork choice rule} di Ethereum, cioè la regola con cui ogni
+	nodo sceglie, tra i possibili rami, la \textit{head of the chain}
+	(figura~\ref{fig:lmd-ghost}). Un \textbf{branch} è un collegamento tra un blocco e il
+	suo padre.
+	\begin{itemize}
+		\item Lo \textbf{score di un blocco} è il peso dei validatori il cui ultimo voto
+			indica quel blocco come head, cioè la somma dei loro ETH in stake. Di ogni
+			validatore conta solo il voto più recente: da qui il nome \textit{Latest
+			Message Driven} (LMD).
+		\item Lo \textbf{score di un branch} è dato dalla somma dello score del blocco da
+			cui ha origine il branch e degli score di tutti i branch direttamente
+			discendenti: è quindi il peso cumulativo dell'intero sottoalbero, perché chi
+			vota un blocco sostiene implicitamente anche tutti i suoi antenati.
+	\end{itemize}
+
+	\begin{figure}[H]
+		\centering
+		\input{immagini/lmd-ghost.tex}
+		\caption{Score dei blocchi e dei branch in LMD-GHOST. In (a) in B si sceglie C
+			(3) invece di C' (1); in (b) in B si sceglie C (8) invece di D (6) e in C si
+			sceglie E (4) invece di F (3).}
+		\label{fig:lmd-ghost}
+	\end{figure}
+
+	Per scegliere la head si parte dall'ultimo checkpoint giustificato e, a ogni bivio,
+	si segue il branch con lo score più alto, fino ad arrivare a una foglia. A differenza
+	di Bitcoin non vince la catena più lunga, ma il sottoalbero più votato
+	(\textit{Greedy Heaviest Observed SubTree}, GHOST): nell'esempio (b) i rami che
+	partono da B hanno la stessa lunghezza, ma vince quello che porta a H perché ha più
+	voti.
+
+	Poiché la regola confronta soltanto gli score dei branch a ogni bivio, non serve
+	esprimerli come frazione dello stake totale. Una soglia rispetto al totale, i $2/3$,
+	serve invece in Casper FFG per i supermajority link.
+
+	Dal punto di vista algoritmico, la struttura dati è un \textbf{albero con radice} con
+	un peso su ogni nodo: la radice è l'ultimo checkpoint giustificato, ogni blocco ha un
+	solo padre, il peso di un nodo è lo score del blocco e lo score di un branch è la
+	somma dei pesi del sottoalbero. Mantenere queste somme aggiornate costa poco:
+	\begin{itemize}
+		\item l'inserimento di un nuovo blocco non cambia nessun peso, perché il blocco non
+			ha ancora voti;
+		\item i pesi cambiano quando un validatore sposta il proprio ultimo voto da un
+			blocco $X$ a un blocco $Y$: il suo stake viene sottratto lungo il percorso da
+			$X$ alla radice e sommato lungo quello da $Y$ alla radice, e sugli antenati
+			comuni le due variazioni si annullano;
+		\item la parte di albero che precede l'ultimo checkpoint finalizzato non può più
+			cambiare e viene eliminata (\textit{pruning}), quindi l'albero contiene pochi
+			blocchi e i percorsi fino alla radice sono brevi.
+	\end{itemize}
+
+	LMD-GHOST prevede inoltre una serie di incentivi e di penalità per chi non si
+	comporta correttamente (lo slashing della sezione~\ref{sec:pos}):
+	\begin{itemize}
+		\item \textbf{proposta di un nuovo blocco}: il validatore che propone il blocco
+			riceve la somma di tutte le fee delle transazioni incluse; se tenta di barare
+			creando più di un blocco per lo stesso turno, viene punito con la confisca di
+			parte del suo stake;
+		\item \textbf{attestazione}: quando viene selezionato per condividere la propria
+			visione della catena, il validatore deve produrre una sola attestazione; se ne
+			produce più di una, o un'attestazione contraddittoria, il protocollo lo punisce
+			erodendo parte del suo deposito.
+	\end{itemize}
+	Se un validatore si comporta male troppe volte, viene rimosso e tutto il suo stake
+	viene requisito.
+
+	Creare due blocchi nello stesso turno è tecnicamente semplice: un blocco è una
+	struttura dati firmata con la chiave del validatore, e nulla impedisce al proponente
+	di costruire due blocchi diversi per lo stesso slot, firmarli entrambi e inviarli a
+	parti diverse della rete. In questo modo crea apposta un fork, che può sfruttare per
+	una doppia spesa o per dividere i voti dei comitati. Le due firme costituiscono però
+	la prova del comportamento scorretto: chiunque le riceva può inserirle in un blocco
+	successivo, e il protocollo punisce automaticamente il validatore.
+
+	\begin{nota}
+		Nella pratica la maggior parte degli slashing avviene per errore: alcuni
+		operatori, per non andare mai offline, fanno girare la stessa chiave di validatore
+		su due computer, che al momento del turno propongono ciascuno il proprio blocco.
+		Per il protocollo due firme sullo stesso slot sono comunque un comportamento
+		scorretto.
+	\end{nota}
+
+	Avere una visione della catena diversa da quella della maggioranza, invece, non è
+	punito, perché può capitare in modo del tutto onesto, per esempio se un blocco arriva
+	in ritardo. Un validatore può sbagliare, ma non può dire due cose diverse:
+	\begin{itemize}
+		\item un voto onesto ma ``sbagliato'', per esempio per una head diversa da quella
+			che poi prevale, non viene punito: il validatore perde soltanto la ricompensa
+			per quella parte del voto;
+		\item un voto con source o target diversi da quelli della catena che prevale non
+			conta per la giustificazione e comporta al massimo una piccola penalità;
+		\item un validatore che non vota subisce una piccola penalità, più pesante solo
+			durante l'inactivity leak;
+		\item solo i voti contraddittori, come due attestazioni diverse per la stessa
+			epoca, vengono puniti con lo slashing.
+	\end{itemize}
+	I nodi senza validatori non votano, quindi non possono essere premiati né puniti:
+	seguono LMD-GHOST e, ricevendo gli stessi blocchi e voti degli altri, la loro visione
+	converge con quella della rete.
+	\subsection{Vantaggi della Proof of Stake}
+	Rispetto alla PoW, la PoS offre diversi vantaggi:
+	\begin{itemize}
+		\item una migliore \textbf{efficienza energetica};
+		\item minori barriere per l'entrata nella rete (\textbf{democratizzazione}),
+			perché riduce la quantità di hardware richiesto. Restano però due ostacoli:
+			32 ETH corrispondono a circa $3500 \times 32 = 112\,000$ euro, e lo spazio su
+			disco veloce richiesto per essere un nodo completo di Ethereum è di circa
+			12 TB;
+		\item una \textbf{maggiore sicurezza}: gli svantaggi economici per chi non si
+			comporta correttamente sono sensibilmente più alti rispetto alla PoW.
+	\end{itemize}
 	%TEORICA%
 
 \end{document}

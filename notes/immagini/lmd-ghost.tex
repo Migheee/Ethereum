@@ -1,0 +1,73 @@
+% LMD-GHOST: score dei blocchi (cerchi arancioni) e dei branch (cerchi blu).
+% Ogni branch va da un blocco al padre; i blocchi verdi sono il percorso fino alla head.
+% Incluso nel documento con \input{immagini/lmd-ghost.tex}.
+\definecolor{lgblocco}{HTML}{FCE4D6}
+\definecolor{lgbranch}{HTML}{9DC3E6}
+\definecolor{lghead}{HTML}{E2F0D9}
+\definecolor{lgheadbordo}{HTML}{2E9E5B}
+\begin{tikzpicture}[
+    blocco/.style={draw, rounded corners=3pt, fill=white, minimum size=0.75cm,
+        font=\small},
+    scelto/.style={blocco, fill=lghead, draw=lgheadbordo, line width=1pt},
+    score/.style={circle, draw, fill=lgblocco, inner sep=0pt, minimum size=0.42cm,
+        font=\scriptsize},
+    sbranch/.style={circle, draw, fill=lgbranch, inner sep=0pt, minimum size=0.42cm,
+        font=\scriptsize},
+    branch/.style={-{Latex[length=2mm]}, line width=0.8pt}
+]
+    % ----- esempio (a): catena con un fork corto -----
+    \begin{scope}[shift={(0, 4.1)}]
+        \node[scelto] (a) at (0, 0) {A};
+        \node[scelto] (b) at (2, 0) {B};
+        \node[scelto] (c) at (4, 0) {C};
+        \node[scelto] (d) at (6, 0) {D};
+        \node[scelto] (e) at (8, 0) {E};
+        \node[blocco] (cp) at (4, 1.5) {C'};
+        \foreach \x in {a, b, c, d, e, cp}
+            \node[score] at (\x.north east) {1};
+        \draw[branch] (b) -- node[sbranch] {5} (a);
+        \draw[branch] (c) -- node[sbranch] {3} (b);
+        \draw[branch] (d) -- node[sbranch] {2} (c);
+        \draw[branch] (e) -- node[sbranch] {1} (d);
+        \draw[branch] (cp.west) -| node[sbranch, pos=0.3] {1} (b.north);
+        \node[font=\small, right=4pt] at (e.east) {head};
+        \node[font=\small] at (4, -0.9) {(a)};
+    \end{scope}
+
+    % ----- esempio (b): albero con più rami -----
+    \node[scelto] (A) at (0, 0) {A};
+    \node[scelto] (B) at (2, 0) {B};
+    \node[scelto] (C) at (4.4, 1.3) {C};
+    \node[blocco] (D) at (4.4, -1.3) {D};
+    \node[scelto] (E) at (6.6, 2.1) {E};
+    \node[blocco] (F) at (6.6, 0.5) {F};
+    \node[blocco] (G) at (6.6, -1.3) {G};
+    \node[scelto] (H) at (8.8, 2.1) {H};
+    \node[blocco] (I) at (8.8, 0.5) {I};
+    \node[blocco] (J) at (8.8, -1.3) {J};
+    \foreach \x/\s in {A/4, B/4, C/1, D/2, E/3, F/1, G/2, H/1, I/2, J/2}
+        \node[score] at (\x.north east) {\s};
+    \draw[branch] (B) -- node[sbranch] {18} (A);
+    \draw[branch] (C.west) -| node[sbranch, pos=0.3] {8} (B.north);
+    \draw[branch] (D.west) -| node[sbranch, pos=0.3] {6} (B.south);
+    \draw[branch] (E.west) -| node[sbranch, pos=0.3] {4} (C.north);
+    \draw[branch] (F.west) -| node[sbranch, pos=0.3] {3} (C.south);
+    \draw[branch] (H) -- node[sbranch] {1} (E);
+    \draw[branch] (I) -- node[sbranch] {2} (F);
+    \draw[branch] (G) -- node[sbranch] {4} (D);
+    \draw[branch] (J) -- node[sbranch] {2} (G);
+    \node[font=\small, right=4pt] at (H.east) {head};
+    \node[font=\small] at (4.4, -2.3) {(b)};
+
+    % ----- legenda -----
+    \begin{scope}[shift={(11.2, 1.2)}]
+        \node[score] at (0, 1.2) {n};
+        \node[font=\small, anchor=west, align=left] at (0.35, 1.2) {score del blocco};
+        \node[sbranch] at (0, 0.5) {n};
+        \node[font=\small, anchor=west, align=left] at (0.35, 0.5)
+            {score del branch\\(cumulativo)};
+        \node[scelto, minimum size=0.42cm] at (0, -0.3) {};
+        \node[font=\small, anchor=west, align=left] at (0.35, -0.3)
+            {percorso fino\\alla head};
+    \end{scope}
+\end{tikzpicture}

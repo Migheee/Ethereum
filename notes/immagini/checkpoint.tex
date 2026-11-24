@@ -1,0 +1,51 @@
+% Casper FFG: checkpoint (primo blocco di ogni epoca) e supermajority link.
+% La catena è fatta dei soli puntatori al blocco precedente (frecce nere corte);
+% il supermajority link è un voto, non un puntatore (arco tratteggiato).
+% Incluso nel documento con \input{immagini/checkpoint.tex}.
+\definecolor{cpfinal}{HTML}{2E9E5B}
+\definecolor{cpgiust}{HTML}{5B9BD5}
+\definecolor{cpepoca}{HTML}{F2F2F2}
+\definecolor{cpvoto}{HTML}{C55A11}
+\begin{tikzpicture}[
+    slot/.style={draw, fill=white, minimum size=0.42cm, inner sep=0pt},
+    checkpoint/.style={draw, minimum size=0.7cm, inner sep=0pt,
+        font=\small\bfseries, text=white},
+    puntatore/.style={-{Latex[length=1.6mm]}, line width=0.6pt},
+    voto/.style={-{Latex[length=2.5mm]}, line width=1.1pt, dashed, cpvoto,
+        bend left=30}
+]
+    \foreach \k/\colore/\stato in {0/cpfinal/finalizzato, 1/cpfinal/finalizzato,
+            2/cpgiust/giustificato} {
+        \begin{scope}[shift={(\k*5.6, 0)}]
+            \draw[fill=cpepoca, rounded corners=3pt] (0, -0.5) rectangle (5.1, 0.5);
+            \node[font=\small] at (3.1, -0.8) {epoca \k};
+            \node[checkpoint, fill=\colore] (c\k) at (0.6, 0) {C\k};
+            \node[slot] (a\k) at (1.6, 0) {};
+            \node[slot] (b\k) at (2.4, 0) {};
+            \node[slot] (d\k) at (3.2, 0) {};
+            \node (p\k) at (3.9, 0) {\dots};
+            \node[slot] (z\k) at (4.6, 0) {};
+            \node[font=\scriptsize, text=\colore, below=2pt] at (c\k.south |- 0, -0.5) {\stato};
+            % ogni blocco punta al blocco precedente
+            \draw[puntatore] (a\k) -- (c\k);
+            \draw[puntatore] (b\k) -- (a\k);
+            \draw[puntatore] (d\k) -- (b\k);
+            \draw[puntatore] (p\k) -- (d\k);
+            \draw[puntatore] (z\k) -- (p\k);
+        \end{scope}
+    }
+    \draw[puntatore] (c1) -- (z0);
+    \draw[puntatore] (c2) -- (z1);
+
+    % supermajority link: voti, non puntatori
+    \draw[voto] (c0.north) to node[above, font=\small] {voti $\ge 2/3$ dello stake} (c1.north);
+    \draw[voto] (c1.north) to node[above, font=\small] {voti $\ge 2/3$ dello stake} (c2.north);
+
+    % legenda
+    \begin{scope}[shift={(3.2, -1.55)}]
+        \draw[puntatore] (0.9, 0) -- (0, 0);
+        \node[font=\small, anchor=west] at (1.1, 0) {puntatore al blocco precedente};
+        \draw[voto, bend left=0] (6.2, 0) -- (7.1, 0);
+        \node[font=\small, anchor=west] at (7.3, 0) {supermajority link (voto)};
+    \end{scope}
+\end{tikzpicture}
